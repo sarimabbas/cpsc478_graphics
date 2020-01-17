@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+
+    <script>
+
+        let ctx = null
+
+        const triangle = {
+            vertexPositions: [
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0]
+            ]
+        }
+
+        const triangleRaw = {
+            vertexPositions: [
+                0.0, 0.0, // first 
+                1.0, 0.0, // second 
+                0.0, 1.0  // third
+            ]
+        }
+
+        const setupWebGL = () => {
+            const canvasRef = document.getElementById("canvas")
+            ctx = canvasRef.getContext("webgl")
+            console.log(ctx)
+        }
+
+        const setupWhatToDraw = () => {
+            var typedPositions = new Float32Array(positions);
+
+        }
+
+        const setupHowToDraw = () => {
+
+
+        }
+
+        const draw = () => {
+
+        }
+
+        const helloDraw = () => {
+            setupWebGL();
+            setupWhatToDraw();
+            setupHowToDraw();
+            draw();
+        }
+
+        window.onload = helloDraw;
+
+
+    </script>
+
+    <style>
+        .canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="500" height="500" class="canvas"></canvas>
+
+</body>
+
+</html>
