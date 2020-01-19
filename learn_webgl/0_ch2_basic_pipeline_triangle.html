@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+
+    <script>
+        // START HERE
+
+        // the webGL context
+        let gl = null
+
+        // a global attribute index (refer to: "setupWhatToDraw")
+        let positionAttribIndex = 0
+
+        // intuitively, positional vertices for a triangle may look like this
+        const triangle = {
+            vertexPositions: [
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0]
+            ]
+        }
+
+        // but webGL expects a more flattened format
+        const triangleRaw = {
+            vertexPositions: [
+                0.0, 0.0, // first 
+                1.0, 0.0, // second 
+                0.0, 1.0  // third
+            ]
+        }
+
+        // the first step
+        const setupWebGL = () => {
+            // one canvas can have one associated webGL context
+            // the context is basically the webGL state machine, with all its buffers etc
+            const canvasRef = document.getElementById("canvas")
+            gl = canvasRef.getContext("webgl")
+            console.log(gl)
+        }
+
+        // the second step
+        const setupWhatToDraw = () => {
+            // create typed positions from our flattened positions
+            const typedPositions = new Float32Array(triangleRaw.vertexPositions);
+
+            // put the typed positions into a webGL buffer
+            let positionsBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionsBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, typedPositions, gl.STATIC_DRAW)
+
+            // tell the GPU to enable these position attributes in its memory
+            gl.enableVertexAttribArray(positionAttribIndex)
+            gl.vertexAttribPointer(positionAttribIndex, 2, gl.FLOAT, false, 0, 0)
+        }
+
+        // the third step
+        const setupHowToDraw = () => {
+
+            // run a Vertex Shader program (written in C-like language) on each vertex
+            // VS processes each vertex one-by-one, without knowledge of adjacent vertices
+            const vsSource = `
+                attribute vec2 aPosition;
+
+                void main(void) {
+                    gl_Position = vec4(aPosition, 0.0, 1.0);
+                }
+            `
+            // IT'S VERY IMPORTANT NOT TO MISS SEMI-COLONS, OTHERWISE THE SHADERS WILL NOT COMPILE
+            // AND YOU WILL GET A BLACK SCREEN WITH NOTHING ON IT
+            // attribute aPosition is the attribute which comes from the "positions" attribute array
+            // it is two-dimensional (x, y), and we substitute it into the first two positions of the vec4()
+            // the other two (the z, w coordinates) are set to 0.0 and 1.0 respectively
+
+            // gl_Position is a global variable in GLSL
+            // it is a 4D vector of floats of vertex positions
+            // coordinates range from -1 to +1
+
+            // now, we create a webGL fragment shader from the source code and compile it
+            let vertexShader = gl.createShader(gl.VERTEX_SHADER)
+            gl.shaderSource(vertexShader, vsSource)
+            gl.compileShader(vertexShader)
+            // now the Vertex Shading part is complete
+
+            // now we run the Fragment Shader program
+            // the VS outputs/generates fragments
+            const fsSource = `
+                void main(void) {
+                    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+                }
+            `
+            // gl_FragColor is a global variable that holds the color of the fragment in R,G,B,A coord
+            // the shader simply colors the fragment blue since R,G,B,A = 0,0,1,1
+
+            // now, we create a webGL fragment shader from the source code and compile it
+            let fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)
+            gl.shaderSource(fragmentShader, fsSource)
+            gl.compileShader(fragmentShader)
+            // now the Fragment Shading part is complete
+
+            // next is some boilerplate to build a complete webGL Program from all the parts
+            let program = gl.createProgram()
+            gl.attachShader(program, vertexShader)
+            gl.attachShader(program, fragmentShader)
+            // this is the index into the GPU memory which holds the position attribute
+            // and this is the variable that becomes available to the vertex shader in GLSL
+            gl.bindAttribLocation(program, positionAttribIndex, "aPosition")
+            // this links the two shaders together
+            gl.linkProgram(program)
+            // this makes the program the current one, ready for use
+            gl.useProgram(program)
+        }
+
+        const draw = () => {
+            // supply which RGBA color to clear with
+            gl.clearColor(0.0, 0.0, 0.0, 1.0)
+            // actually do the clear
+            gl.clear(gl.COLOR_BUFFER_BIT)
+
+            // 1st arg: possible modes: POINTS, LINES, TRIANGLES
+            // 2nd arg: the starting index to use when drawing from "positions" array
+            // 3rd arg: how many indices to render at one time
+            gl.drawArrays(gl.TRIANGLES, 0, 3)
+
+            // you can attach as many attribute arrays as you want
+            // drawArrays() will draw all of them at once (apparently?)
+        }
+
+        const helloDraw = () => {
+            setupWebGL();
+            setupWhatToDraw();
+            setupHowToDraw();
+            draw();
+        }
+
+        // on window load, we initialize the webGL pipeline
+        // this makes sure that the canvas is fully loaded/available in the web
+        // browser before we attach a context to it
+        window.onload = helloDraw;
+    </script>
+
+    <style>
+        .canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="500" height="500" class="canvas"></canvas>
+
+</body>
+
+</html>
