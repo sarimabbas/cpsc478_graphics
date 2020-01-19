@@ -15,7 +15,7 @@ void writePPM(string filename, int xRes, int yRes, float* values)
   int totalCells = xRes * yRes;
   unsigned char* pixels = new unsigned char[3 * totalCells];
   for (int i = 0; i < 3 * totalCells; i++)
-    pixels[i] = 255 * values[i];
+    pixels[i] = values[i];
 
   FILE *fp;
   fp = fopen(filename.c_str(), "wb");
