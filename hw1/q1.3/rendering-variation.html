@@ -7,36 +7,57 @@
     <script type="text/javascript" src="js/rendering-variation-2.js"></script>
 
     <script type="text/javascript">
-
-        const numTriangles = 20;
-
         // WebGL rendering context
         var gl = null;
 
+        // input variables
+        let numTriangles = 16;
+        let mode = "wheel" // "ramp"
+
+        // Only continue if WebGL is available and working
         function draw() {
-            renderTriangle(gl, numTriangles);
-        }
-
-        function start() {
-            var canvas = document.getElementById("canvas");
-
-            // Initialize the OpenGL rendering context
-            gl = canvas.getContext("experimental-webgl");
-
-            // Only continue if WebGL is available and working
             if (gl) {
                 // initialize shader programs 
                 initShaders(gl, numTriangles);
 
                 // initialize a very simple scene, a triangle
-                initBuffers(gl, numTriangles);
+                initBuffers(gl, numTriangles, mode);
 
-                // call the draw() function every 20 milliseconds
-                setInterval(draw, 20);
-            }
-            else {
+                renderTriangle(gl, numTriangles);
+                // setInterval(draw, 20);
+            } else {
                 alert("WebGL initialization failed! Your browser does not support WebGL or it is not properly configured.");
             }
+
+        }
+
+        function handleNumTriangles() {
+            const number = document.getElementById("numTrianglesInput").value
+            numTriangles = number
+            draw()
+        }
+
+        function handleColorMode() {
+            if (mode == "wheel") {
+                mode = "ramp"
+            } else {
+                mode = "wheel"
+            }
+            const colorModeRef = document.getElementById("colorMode")
+            colorModeRef.innerHTML = `Mode: ${mode}`
+            draw()
+        }
+
+
+        function start() {
+            // initialize canvas
+            var canvas = document.getElementById("canvas");
+
+            // Initialize the OpenGL rendering context
+            gl = canvas.getContext("experimental-webgl");
+
+            // draw triangles
+            draw()
         }
     </script>
 
@@ -47,6 +68,15 @@
         <canvas id="canvas" width="600" height="600">
             If you are seeing this message your web browser does not support the HTML5 &lt;canvas>&gt; element.
         </canvas>
+        <div style="display: flex; align-items:center; justify-content: center;">
+            <span style="margin-right: 10px">Number of triangles</span>
+            <input type="number" name="numTrianglesInput" id="numTrianglesInput" value="3" />
+            <button type="button" onclick="handleNumTriangles()">Update number of triangles</button>
+        </div>
+        <div style="margin-top: 10px">
+            <span id="colorMode" style="margin-right: 10px">Mode: wheel</span>
+            <button type="button" onclick="handleColorMode()">Toggle color mode</button>
+        </div>
     </center>
 </body>
 

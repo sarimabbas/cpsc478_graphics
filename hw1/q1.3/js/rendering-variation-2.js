@@ -9,12 +9,13 @@ const createTrianglePositions = num => {
     // special cases (num is 0-2)
     // prettier-ignore
     const specialCases = [
-        [0,      1,      0,
+        [0,      0,      0,
         .707,   .707,   0,
-        0,      0,      0],
-        [1,      0,      0, 
+        0,      1,      0],
+        [0,     0,      0, 
+        1,      0,      0, 
         .707,   -.707,  0, 
-        0,      0,      0]
+     ]
     ];
     if (num == 0) {
         return new Float32Array([]);
@@ -60,7 +61,6 @@ const createTrianglePositions = num => {
         vertices.push(triangle);
     }
     // flatten the vertices array
-    console.log(vertices);
     vertices = vertices.flat(Infinity);
     return new Float32Array(vertices);
 };
@@ -90,32 +90,29 @@ const createTriangleColorsWheel = num => {
     return new Float32Array(colors);
 };
 
+const createTriangleColorsRamp = num => {
+    let colors = [];
+    for (let i = 0; i < num; i++) {
+        // prettier-ignore
+        colors.push([
+            0.0, 0.0, 1.0, // the first coordinate is the origin and is blue,
+            1.0, 0.0, 0.0, 
+            1.0, 0.0, 0.0  // the other two are red
+        ])
+    }
+    colors = colors.flat(Infinity);
+    return new Float32Array(colors);
+};
+
 /// Initialize the data buffer to pass to the rendering pipeline
 /// the geometry and its attributes.
-function initBuffers(gl, num) {
-    // prettier-ignore
-    //     triangleVertices = new Float32Array([
-    //     0,      1,      0,
-    //     .707,   .707,   0,
-    //     0,      0,      0,
-    //     1,      0,      0,
-    //     .707,   -.707,  0,
-    //     0,      0,      0
-    // ]);
-
+function initBuffers(gl, num, colorMode) {
     triangleVertices = createTrianglePositions(num);
 
-    // prettier-ignore
-    // var triangleVerticesColor = new Float32Array([
-    // 1.0, 0.0, 0.0,  // color of the 1st vertex (red)
-    // 0.0, 1.0, 0.0,  // color of the 2nd vertex (green)
-    // 0.0, 0.0, 1.0 , // color of the 3rd vertex (blue)
-    // 1.0, 1.0, 0.0,  // color of the 4th vertex (yellow)
-    // 1.0, 1.0, 1.0,
-    // 0.0, 1.0, 1.0
-    // ]);
-
-    var triangleVerticesColor = createTriangleColorsWheel(num)
+    var triangleVerticesColor =
+        colorMode === "wheel"
+            ? createTriangleColorsWheel(num)
+            : createTriangleColorsRamp(num);
 
     vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
