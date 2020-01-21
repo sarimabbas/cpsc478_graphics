@@ -4,28 +4,117 @@ var vertexColorBuffer = null;
 var aPositionIndex = -1;
 var aVertexColor = -1;
 
+// num: how many triangles to make
+const createTrianglePositions = num => {
+    // special cases (num is 0-2)
+    // prettier-ignore
+    const specialCases = [
+        [0,      0,      0,
+        .707,   .707,   0,
+        0,      1,      0],
+        [0,     0,      0, 
+        1,      0,      0, 
+        .707,   -.707,  0, 
+     ]
+    ];
+    if (num == 0) {
+        return new Float32Array([]);
+    } else if (num == 1) {
+        return new Float32Array(specialCases.slice(0, 1).flat(Infinity));
+    } else if (num == 2) {
+        return new Float32Array(specialCases.flat(Infinity));
+    }
+
+    // general case (num >= 3)
+    let vertices = [];
+    const theta = (2 * Math.PI) / num;
+    for (let i = 0; i < num; i++) {
+        // calculate the second coordinate (the first is the origin)
+        // the radius/hypotenuse of the triangle is 1 (because webGL canvas is -1 to 1)
+        // theta * i because we make the triangle every multiple of theta
+        const second_x = 1 * Math.cos(theta * (i + 1));
+        const second_y = 1 * Math.sin(theta * (i + 1));
+
+        // if the second or more vertex
+        let triangle = [0, 0, 0];
+        if (vertices.length > 0) {
+            // create all the vertices for this triangle
+            // prettier-ignore
+            triangle = [
+                0, 0, 0, // first coordinate
+                second_x, second_y, 0, // second coordinate
+                // third coordinate is the previous second coordinate
+                vertices[i-1][3], vertices[i-1][4], vertices[i-1][5] 
+            ]
+            // if no triangle has been added yet, we need to add all the coordinates
+        } else {
+            // prettier-ignore
+            const third_x = 1 * Math.cos(2 * Math.PI * (i + 1));
+
+            // prettier-ignore
+            triangle = [
+                0, 0, 0, // first coordinate,
+                second_x, second_y, 0, // second
+                third_x, 0, 0 // third is just the straight line with x coordinate
+            ];
+        }
+        vertices.push(triangle);
+    }
+    // flatten the vertices array
+    vertices = vertices.flat(Infinity);
+    return new Float32Array(vertices);
+};
+
+const createTriangleColorsWheel = num => {
+    let colors = [];
+    for (let i = 0; i < num; i++) {
+        if (i % 2 == 0) {
+            // all vertices of the triangle should be red
+            // prettier-ignore
+            colors.push([ 
+                1.0, 0.0, 0.0,
+                1.0, 0.0, 0.0,
+                1.0, 0.0, 0.0,
+            ])
+        } else {
+            // all vertices of the triangle should be blue
+            // prettier-ignore
+            colors.push([ 
+                0.0, 0.0, 1.0,
+                0.0, 0.0, 1.0,
+                0.0, 0.0, 1.0,
+            ])
+        }
+    }
+    colors = colors.flat(Infinity);
+    return new Float32Array(colors);
+};
+
+const createTriangleColorsRamp = num => {
+    let colors = [];
+    for (let i = 0; i < num; i++) {
+        // prettier-ignore
+        colors.push([
+            0.0, 0.0, 1.0, // the first coordinate is the origin and is blue,
+            1.0, 0.0, 0.0, 
+            1.0, 0.0, 0.0  // the other two are red
+        ])
+    }
+    colors = colors.flat(Infinity);
+    return new Float32Array(colors);
+};
+
 /// Initialize the data buffer to pass to the rendering pipeline
 /// the geometry and its attributes.
-function initBuffers(gl) {
-    // prettier-ignore
-    triangleVertices = new Float32Array([
-    0,      1,      0,
-    .707,   .707,   0,
-    0,      0,      0,
-    1,      0,      0, 
-    .707,   -.707,  0, 
-    0,      0,      0
-]);
+function initBuffers(gl, num, colorMode) {
+    triangleVertices = createTrianglePositions(num);
 
-    // prettier-ignore
-    var triangleVerticesColor = new Float32Array([
-    1.0, 0.0, 0.0,  // color of the 1st vertex (red)
-    0.0, 1.0, 0.0,  // color of the 2nd vertex (green)
-    0.0, 0.0, 1.0 , // color of the 3rd vertex (blue)
-    1.0, 1.0, 0.0,  // color of the 4th vertex (yellow)
-    1.0, 1.0, 1.0,
-    0.0, 1.0, 1.0
-    ]);
+    console.log(triangleVertices);
+
+    var triangleVerticesColor =
+        colorMode === "wheel"
+            ? createTriangleColorsWheel(num)
+            : createTriangleColorsRamp(num);
 
     vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -90,7 +179,7 @@ function initShaders(gl) {
 }
 
 /// Draw the given triangle interpolating vertices color.
-function renderTriangle(gl) {
+function renderTriangle(gl, num) {
     // Clear the framebuffer of the rendering context
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -111,7 +200,8 @@ function renderTriangle(gl) {
     gl.vertexAttribPointer(aVertexColor, 3, gl.FLOAT, false, 0, 0);
 
     // start to draw (!)
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    // gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.drawArrays(gl.TRIANGLES, 0, num * 3);
 
     // disable the current shading program
     gl.useProgram(null);

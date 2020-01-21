@@ -1,5 +1,6 @@
 LDFLAGS_COMMON = -lstdc++
-CFLAGS_COMMON = -c -Wall -I./ -O3
+CFLAGS_COMMON = -c -Wall -I./ -g
+# remove  -O3 flag and add -g for debugging
 
 # calls:
 CC         = g++

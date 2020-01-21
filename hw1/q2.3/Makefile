@@ -1,5 +1,7 @@
 LDFLAGS_COMMON = -lstdc++
-CFLAGS_COMMON = -c -Wall -I./ -O3
+CFLAGS_COMMON = -c -Wall -I./ -g
+# -g
+# -O3
 
 # calls:
 CC         = g++
