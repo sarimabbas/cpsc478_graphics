@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    writePPM("random.ppm", 500, 500, values);
+    writePPM("noise.ppm", 500, 500, values);
 }
 
 string whichColor(float p) {
