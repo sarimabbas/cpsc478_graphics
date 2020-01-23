@@ -8,9 +8,9 @@
             "name": "(lldb) Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/hw1/q2.2/run",
-            "args": ["bunny.ppm"],
-            "cwd": "${workspaceFolder}/hw1/q2.2"
+            "program": "${workspaceFolder}/hw1/q2.3/run",
+            // "args": ["bunny.ppm"],
+            "cwd": "${workspaceFolder}/hw1/q2.3"
         },
         {
             "type": "chrome",
