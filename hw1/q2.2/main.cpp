@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
     float* out = new float[3 * xRes * yRes];
     applyBlur(xRes, yRes, values, out);
 
-    writePPM("blurred.ppm", xRes, yRes, out);
+    writePPM("filtered.ppm", xRes, yRes, out);
 
     return 0;
 }
