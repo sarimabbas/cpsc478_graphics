@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     bresenhamRasterizer(values, commandInts[1], commandInts[2], commandInts[3],
                         commandInts[4], xRes, yRes);
     // write PPM to file
-    writePPM("drawline.ppm", xRes, yRes, values);
+    writePPM("line.ppm", xRes, yRes, values);
 
     delete[] values;
 }
