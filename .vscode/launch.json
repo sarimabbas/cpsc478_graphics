@@ -5,19 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "firefox",
+            "request": "launch",
+            "reAttach": true,
+            "name": "Firefox launch",
+            "url": "http://0.0.0.0:8000/hw2/q2.3/chapter3/primitives_octahedron.html",
+            "webRoot": "${workspaceFolder}/hw2/q2.3/chapter3"
+        },
+        {
             "name": "(lldb) Launch",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/hw1/q2.3/run",
             // "args": ["bunny.ppm"],
             "cwd": "${workspaceFolder}/hw1/q2.3"
-        },
-        {
-            "type": "chrome",
-            "request": "launch",
-            "name": "Launch Chrome against localhost",
-            "url": "http://localhost:8080",
-            "webRoot": "${workspaceFolder}"
         }
     ]
 }
