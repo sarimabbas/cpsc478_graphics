@@ -1,21 +1,9 @@
-/// CUBE DEFINTION
-///
-/// Cube is defined to be centered at the origin of the coordinate reference system.
-/// Cube size is assumed to be 2.0 x 2.0 x 2.0 .
-
 const midpoint = (a, b) => {
     return [
         (a[0] + b[0]) / parseFloat(2),
         (a[1] + b[1]) / parseFloat(2),
         (a[2] + b[2]) / parseFloat(2)
     ];
-};
-
-const distance = (a, b) => {
-    const dx = a[0] - b[0];
-    const dy = a[1] - b[1];
-    const dz = a[2] - b[2];
-    return Math.hypot(dx, dy, dz);
 };
 
 const getPointFromIndex = (points, index) => {
@@ -44,14 +32,14 @@ const split = (indicesInitial, pointsInitial) => {
             indicesInitial[i + 1],
             indicesInitial[i + 2]
         ];
-        console.log("Face: ", face);
+        // console.log("Face: ", face);
         // get the 3 points that make up the face
         const points = [
             getPointFromIndex(pointsInitial, face[0]), // 0
             getPointFromIndex(pointsInitial, face[1]), // 1
             getPointFromIndex(pointsInitial, face[2]) // 2
         ];
-        console.log("Points: ", points);
+        // console.log("Points: ", points);
 
         // make 3 more points by splitting the triangle
         const newPoints = [
@@ -59,12 +47,12 @@ const split = (indicesInitial, pointsInitial) => {
             midpoint(points[1], points[2]),
             midpoint(points[2], points[0])
         ];
-        console.log("Midpoints: ", newPoints);
+        // console.log("Midpoints: ", newPoints);
 
         // these points will take on these identies (order matters)
         pointsFinal.push([...points, ...newPoints]);
         pointsFinal = pointsFinal.flat(Infinity);
-        console.log("All points: ", pointsFinal);
+        // console.log("All points: ", pointsFinal);
 
         // create a new indices/faces array referencing these points (order
         // doesn't really matter)
@@ -76,13 +64,13 @@ const split = (indicesInitial, pointsInitial) => {
             (i*2)+5, (i*2)+4, (i*2)+3, // middle
             (i*2)+4, (i*2)+1, (i*2)+3  // right
         ];
-        console.log("Faces: ", newFaces);
+        // console.log("Faces: ", newFaces);
 
         indicesFinal = indicesFinal.concat(newFaces);
-        console.log("All faces: ", indicesFinal);
+        // console.log("All faces: ", indicesFinal);
         // now, we need to make the new faces array
 
-        console.log("END FOR ONE TRIANGLE");
+        // console.log("END FOR ONE TRIANGLE");
     }
     return {
         indices: indicesFinal,
@@ -90,7 +78,7 @@ const split = (indicesInitial, pointsInitial) => {
     };
 };
 
-function Octahedron() {
+function Octahedron(splits) {
     this.name = "octahedron";
 
     // vertices definition
@@ -124,10 +112,12 @@ function Octahedron() {
         3, 0, 5, // right, bottom
     ]
 
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < splits; i++) {
         const splitResult = split(indices, points);
         points = splitResult.points;
         indices = splitResult.indices;
+        console.log("Vertices: ", points);
+        console.log("Indices: ", indices);
     }
 
     // do the projection

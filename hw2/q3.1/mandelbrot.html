@@ -1,9 +1,10 @@
 <html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>Mandelbrotting</title>
 
-<script id="vertex-shader" type="text/x-shader/x-vertex">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Mandelbrotting</title>
+
+  <script id="vertex-shader" type="text/x-shader/x-vertex">
 attribute vec3 a_position;
 varying vec2 v_Position;
 void main(void)
@@ -13,60 +14,106 @@ void main(void)
 }
 </script>
 
-<script id="fragment-shader" type="text/x-shader/x-fragment">
+  <script id="fragment-shader" type="text/x-shader/x-fragment">
 precision highp float;
 varying vec2 v_Position;
+
+vec2 f(vec2 z, vec2 c);
+
+vec2 f(vec2 z, vec2 c) {
+  return vec2(z.x * z.x - z.y * z.y, z.x * z.y *2.0) + c;
+}
+
+
 void main(void)
 {
-  float rNormalized = (v_Position.x + 1.0) * 0.5;
-  float gNormalized = (v_Position.y + 1.0) * 0.5;
-  gl_FragColor = vec4(rNormalized, gNormalized, 0.0, 1.0);
-}
-</script>
+  float rNormalized = (v_Position.x * 2.0);
+  float gNormalized = (v_Position.y * 2.0);
 
-<script type="text/javascript" src="js/mandelbrot.js"></script>
+  int maxIterations = 100;
+  int iterationCounter = 0;
+  float maxRadius = 2.0;
 
-<script type="text/javascript">
-// WebGL rendering context
-var gl = null;
+  vec2 Z = vec2(rNormalized, gNormalized);
+  vec2 C = vec2(rNormalized, gNormalized);
 
-function draw() 
-{
-  renderTriangle(gl);
-}
+  // GLSL complains about
+  // 1. while loops, so have to use a for loop
+  // 2. a non-constant in the condition, so have to use a high fixed number 
+  // and have to break inside
+  for(int i = 0; i < 10000; i++) {
+ 
+    iterationCounter = i;
+    // break after maxIterations, thanks GLSL!
+    if (iterationCounter >= maxIterations) {
+        break;
+    }
 
-function start() 
-{
-  var canvas = document.getElementById("canvas");
+    // break if (x^2 + y^2) is exceeeded
+    float radius = sqrt((Z.x * Z.x) + (Z.y * Z.y));
+    if (radius > maxRadius) {
+        break;
+    }
 
-  // Initialize the OpenGL rendering context
-  gl = canvas.getContext("experimental-webgl");
-     
-  // Only continue if WebGL is available and working
-  if (gl)  
-  {
-    // initialize shader programs 
-    initShaders(gl);
-    
-    // initialize a very simple scene, a triangle
-    initBuffers(gl);
-  
-    // call the draw() function every 20 milliseconds
-    setInterval(draw, 20);
+    // Z = Z^2 + C
+    Z = f(Z, C);
+    // float Zxcopy = Z.x;
+    // Z.x = ((Z.x * Z.x) - (Z.y * Z.y)) + C.x;
+    // Z.y = (2.0 * Zxcopy * Z.y) + C.y;
   }
-  else 
-  {
-    alert("WebGL initialization failed! Your browser does not support WebGL or it is not properly configured.");  
-  }   
+
+  if (iterationCounter == maxIterations) {
+      // it should be inside the set
+      gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+  } else {
+      float color = 1.0 - (1.0 / float(iterationCounter));
+      gl_FragColor = vec4(color, color, color, 1.0);
+      // gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+  }
 }
 </script>
+
+  <script type="text/javascript" src="js/mandelbrot.js"></script>
+
+  <script type="text/javascript">
+    // WebGL rendering context
+    var gl = null;
+
+    function draw() {
+      renderTriangle(gl);
+    }
+
+    function start() {
+      var canvas = document.getElementById("canvas");
+
+      // Initialize the OpenGL rendering context
+      gl = canvas.getContext("experimental-webgl");
+
+      // Only continue if WebGL is available and working
+      if (gl) {
+        // initialize shader programs 
+        initShaders(gl);
+
+        // initialize a very simple scene, a triangle
+        initBuffers(gl);
+
+        // call the draw() function every 20 milliseconds
+        setInterval(draw, 20);
+      }
+      else {
+        alert("WebGL initialization failed! Your browser does not support WebGL or it is not properly configured.");
+      }
+    }
+  </script>
 
 </head>
-<body onload="start()"> 
+
+<body onload="start()">
   <center>
-  <canvas id="canvas" width="600" height="600">
-    If you are seeing this message your web browser does not support the HTML5 &lt;canvas>&gt; element.
-  </canvas>
+    <canvas id="canvas" width="600" height="600">
+      If you are seeing this message your web browser does not support the HTML5 &lt;canvas>&gt; element.
+    </canvas>
   </center>
 </body>
+
 </html>

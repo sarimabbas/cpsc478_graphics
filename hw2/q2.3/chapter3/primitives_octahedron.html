@@ -11,14 +11,27 @@
 
     <script type="text/javascript">
 
+        var splitNumber = 0;
+
+        function buttonClick() {
+            splitNumber = parseInt(document.getElementById("splitNumber").value);
+            draw();
+        }
+
         // OpenGL rendering context
         var gl = null;
 
-        // primitive to render
-        var primitive = new Octahedron();
+        var existingInterval = null
 
+        // primitive to render
         function draw() {
-            drawThePrimitive(gl, primitive);
+            clearInterval(existingInterval)
+            var primitive = new Octahedron(splitNumber);
+
+            existingInterval = setInterval(() => {
+                initialize(gl, primitive);
+                drawThePrimitive(gl, primitive)
+            }, 20);
         }
 
         function start() {
@@ -29,13 +42,7 @@
             gl = canvas.getContext("experimental-webgl");
 
             // Only continue if WebGL is available and working
-            if (gl) {
-                initialize(gl, primitive);
-                setInterval(draw, 20);
-            }
-            else {
-                alert("WebGL initialization failed! Your browser does not support WebGL or it is not properly configured.");
-            }
+            draw();
         }
     </script>
 
@@ -46,6 +53,10 @@
         <canvas id="canvas" width="600" height="400">
             If you are seeing this message your web browser does not support the HTML5 &lt;canvas>&gt; element.
         </canvas>
+        <p>Number of splits</p>
+        <input type="number" name="splitNumber" id="splitNumber" value="0" />
+        <button type="button" onclick="buttonClick()">Submit</button>
+
     </center>
 </body>
 
