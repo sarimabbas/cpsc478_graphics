@@ -8,6 +8,10 @@ var indexBufferEdges = null;
 var currentAngle = 0;
 var incAngle = 0.3;
 
+// SARIM: i added
+var aVertexColor = -1;
+var colorBuffer = null;
+
 // Initialize the buffers
 ////
 function createObjectBuffers(gl, primitive) {
@@ -40,6 +44,24 @@ function createObjectBuffers(gl, primitive) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufferEdges);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, edges, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+    // SARIM: same for colors (1 color per vertex)
+    // prettier-ignore
+    const colors = [
+        0, 0, 1, // A top: blue
+        0, 1, 0, // B bottom: green 
+        0, 0, 1, // A bottom: blue
+        0, 1, 0, // B top: green
+        1, 0, 0, // C top: red
+        1, 1, 0, // D top: yellow
+        1, 0, 0, // C top: red
+        1, 1, 0, // D bottom: yellow
+    ];
+
+    colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 /// Initialize the shaders
@@ -48,10 +70,20 @@ function initShaders(gl) {
     // prettier-ignore
     var vertexShaderSource = `
   	uniform   mat4 u_modelviewprojection;
-	attribute vec3 a_position;
+    attribute vec3 a_position;
+    
+
+    // SARIM: i added this 
+    attribute vec3 color;   
+    varying vec3 vColor;
+
+
 	void main(void)
 	{
-		gl_Position = u_modelviewprojection * vec4(a_position, 1.0);
+        gl_Position = u_modelviewprojection * vec4(a_position, 1.0);
+
+        // SARIM
+        vColor = color;
 	}
     `;
     // attribute a_position is supported in vertex shaders only
@@ -61,9 +93,12 @@ function initShaders(gl) {
 	precision highp float;
     uniform vec3 u_color;
 
+    // SARIM
+    varying vec3 vColor;
+
 	void main(void)
 	{
-		gl_FragColor = vec4(u_color, 1.0);
+		gl_FragColor = vec4(vColor, 1.0);
 	}
 	`;
 
@@ -93,6 +128,16 @@ function initShaders(gl) {
         str += "PROG:\n" + gl.getProgramInfoLog(shaderProgram);
         alert(str);
     }
+
+    // SARIM: bind the color
+    // bind the color buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    // get the attribute location
+    var color = gl.getAttribLocation(shaderProgram, "color");
+    // point attribute to the volor buffer object
+    gl.vertexAttribPointer(color, 3, gl.FLOAT, false, 0, 0);
+    // enable the color attribute
+    gl.enableVertexAttribArray(color);
 
     uColorLocation = gl.getUniformLocation(shaderProgram, "u_color");
     uModelViewProjectionLocation = gl.getUniformLocation(
@@ -154,6 +199,7 @@ function drawThePrimitive(gl, primitive) {
 
     gl.uniformMatrix4fv(uModelViewProjectionLocation, false, modelviewprojMat);
 
+    // associate shader to buffer objects
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.enableVertexAttribArray(aPositionIndex);
     gl.vertexAttribPointer(aPositionIndex, 3, gl.FLOAT, false, 0, 0);
