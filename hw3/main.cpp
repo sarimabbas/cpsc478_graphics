@@ -8,13 +8,15 @@
 
 using namespace std;
 
-// prototypes
+// PROTOTYPES
+
+// pipeline routines
+vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
+// debugging routines
 template <typename T, typename A>
 void printVector(vector<T, A> const& vec);
-
-vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
 void testViewportMatrix(vector<VEC3> vertices);
-
+// ppm routines
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
 float* allocatePPM(int xRes, int yRes);
@@ -240,6 +242,8 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+// pipeline routines
 
 vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     // the viewport transform is basically a scaling operation
