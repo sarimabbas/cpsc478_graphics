@@ -12,10 +12,15 @@ using namespace std;
 
 // pipeline routines
 vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
+float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
+                             vector<VEC3> colors, int xRes, int yRes,
+                             bool interpolateColors = false);
 // debugging routines
 template <typename T, typename A>
 void printVector(vector<T, A> const& vec);
-void testViewportMatrix(vector<VEC3> vertices);
+void testViewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
+// other routines
+bool betweenZeroAndOneInclusive(Real num);
 // ppm routines
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
@@ -223,9 +228,6 @@ void buildCubePerVertexColors(vector<VEC3>& vertices, vector<VEC3I>& indices,
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
-    // void buildSquare(vector<VEC3> & vertices, vector<VEC3I> & indices,
-    //                  vector<VEC3> & colors)
-
     cout << "Starting build square" << endl;
     vector<VEC3> vertices;
     vector<VEC3I> indices;
@@ -236,9 +238,32 @@ int main(int argc, char** argv) {
     buildSquare(vertices, indices, colors);
     // printVector(vertices);
 
+    int xRes = 800;
+    int yRes = 600;
+
     // we do a viewport matrix transform, modifying each coordinate
-    vector<VEC3> transformedVertices = viewportMatrix(vertices, 800, 600);
-    testViewportMatrix(transformedVertices);
+    cout << "Starting viewport transform" << endl;
+    vector<VEC3> transformedVertices = viewportMatrix(vertices, xRes, yRes);
+    printVector(transformedVertices);
+    testViewportMatrix(transformedVertices, xRes, yRes);
+
+    // do the triangleRasterization
+    cout << "Starting triangle rasterization" << endl;
+    float* ppm =
+        triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
+    if (!ppm) {
+        cout << "Invalid ppm" << endl;
+        return -1;
+    }
+    // write the PPM file
+    cout << "Writing ppm file" << endl;
+    writePPM("rasterization.ppm", xRes, yRes, ppm);
+
+    // cout << "norm" << endl;
+    // VEC3 v0(1, 2, 3);
+    // cout << v0.squaredNorm() << endl;
+
+    delete[] ppm;
 
     return 0;
 }
@@ -275,6 +300,96 @@ vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     return transformedVertices;
 }
 
+float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
+                             vector<VEC3> colors, int xRes, int yRes,
+                             bool interpolateColors) {
+    // first, init an image
+    float* ppm = allocatePPM(xRes, yRes);
+
+    // calculate areas for each triangle in advance to avoid repeated
+    // computation
+    vector<Real> triangleAreas;
+    vector<VEC3> triangleCrosses;
+    for (int k = 0; k < indices.size(); k++) {
+        VEC3I triangle = indices[k];
+        VEC3 pointA = vertices[triangle[0]];
+        VEC3 pointB = vertices[triangle[1]];
+        VEC3 pointC = vertices[triangle[2]];
+
+        // find the full area of the triangle
+        VEC3 ab = pointB - pointA;
+        VEC3 ac = pointC - pointA;
+        VEC3 cross = ab.cross(ac);
+        Real fullArea = 0.5 * (cross.norm());
+        triangleCrosses.push_back(cross);
+        triangleAreas.push_back(fullArea);
+    }
+
+    // for each pixel
+    for (int i = 0; i < xRes; i++) {
+        for (int j = 0; j < yRes; j++) {
+            // debug traps
+            if (i == 25 && j == 18) {
+                cout << "Trapped" << endl;
+            }
+
+            if (i == 0 && j == 17) {
+                cout << "Trapped" << endl;
+            }
+
+            // for each primitive (i.e. triangle)
+            for (int k = 0; k < indices.size(); k++) {
+                VEC3I triangle = indices[k];
+                VEC3 pointA = vertices[triangle[0]];
+                VEC3 pointB = vertices[triangle[1]];
+                VEC3 pointC = vertices[triangle[2]];
+
+                // split the full triangle via the pixel coordinate
+                // it does not appear that the z coordinate is important
+                VEC3 pointP = VEC3(i, j, 0.5);
+                VEC3 crossA = (pointC - pointB).cross(pointP - pointB);
+                VEC3 crossB = (pointA - pointC).cross(pointP - pointC);
+                VEC3 crossC = (pointB - pointA).cross(pointP - pointA);
+
+                // Real areaA = 0.5 * (crossA.norm());
+                // Real areaB = 0.5 * (crossB.norm());
+                // Real areaC = 0.5 * (crossC.norm());
+
+                Real alpha = triangleCrosses[k].dot(crossA) /
+                             triangleCrosses[k].squaredNorm();
+                Real beta = triangleCrosses[k].dot(crossB) /
+                            triangleCrosses[k].squaredNorm();
+                Real gamma = triangleCrosses[k].dot(crossC) /
+                             triangleCrosses[k].squaredNorm();
+
+                // color based on the decision
+                if (betweenZeroAndOneInclusive(alpha) &&
+                    betweenZeroAndOneInclusive(beta) &&
+                    betweenZeroAndOneInclusive(gamma)) {
+                    Real color = (alpha * colors[k][0]) +
+                                 (beta * colors[k][1]) + (gamma * colors[k][2]);
+                    int index = indexIntoPPM(i, j, xRes, yRes, true);
+                    if (interpolateColors) {
+                        ppm[index] = colors[k][0] * alpha * 255;
+                        ppm[index + 1] = colors[k][1] * beta * 255;
+                        ppm[index + 2] = colors[k][2] * gamma * 255;
+                    } else {
+                        ppm[index] = colors[k][0] * 255;
+                        ppm[index + 1] = colors[k][1] * 255;
+                        ppm[index + 2] = colors[k][2] * 255;
+                    }
+                }
+
+                // writePPM("rasterization.ppm", xRes, yRes, ppm);
+            }
+        }
+    }
+
+    // TODO: remove
+    // return NULL;
+    return ppm;
+}
+
 // debugging routines
 
 template <typename T, typename A>
@@ -286,10 +401,8 @@ void printVector(vector<T, A> const& vec) {
     cout << "]" << endl;
 }
 
-void testViewportMatrix(vector<VEC3> vertices) {
+void testViewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     // write out the vertices to a file
-    int xRes = 800;
-    int yRes = 600;
     float* ppm = allocatePPM(xRes, yRes);
     for (int i = 0; i < vertices.size(); i++) {
         int index = indexIntoPPM(vertices[i][0], vertices[i][1], xRes, yRes);
@@ -299,6 +412,15 @@ void testViewportMatrix(vector<VEC3> vertices) {
     }
     writePPM("testViewportMatrix.ppm", xRes, yRes, ppm);
     delete[] ppm;
+}
+
+// other routines
+
+bool betweenZeroAndOneInclusive(Real num) {
+    if (num >= 0.0 && num <= 1.0) {
+        return true;
+    }
+    return false;
 }
 
 // PPM routines

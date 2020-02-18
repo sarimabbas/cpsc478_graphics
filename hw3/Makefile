@@ -20,7 +20,7 @@ SOURCES    = main.cpp
 OBJECTS    = $(SOURCES:.cpp=.o)
 
 .cpp.o:
-	g++ -w -O3 -c -g $< -o $@
+	g++ -w -c -g $< -o $@
 
 run: main.o
 	g++ $(OBJECTS) $(LDFLAGS) -o $@

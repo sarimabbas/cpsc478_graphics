@@ -16,9 +16,9 @@
             "name": "(lldb) Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/hw1/q2.3/run",
+            "program": "${workspaceFolder}/hw3/run",
             // "args": ["bunny.ppm"],
-            "cwd": "${workspaceFolder}/hw1/q2.3"
+            "cwd": "${workspaceFolder}/hw3"
         }
     ]
 }
