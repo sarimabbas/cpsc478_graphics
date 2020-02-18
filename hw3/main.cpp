@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// pipeline routines
+// pipeline routine
 
 vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     // the viewport transform is basically a scaling operation
