@@ -15,6 +15,9 @@ vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              vector<VEC3> colors, int xRes, int yRes,
                              bool interpolateColors = false);
+vector<VEC3> orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
+                                          Real right, Real bottom, Real top,
+                                          Real near, Real far);
 // debugging routines
 template <typename T, typename A>
 void printVector(vector<T, A> const& vec);
@@ -235,22 +238,28 @@ int main(int argc, char** argv) {
     // the pre-provided geometries are in the canonical view volume
     // the canonical view volumne is a cube centered at origin, with edges
     // that go from -1 to +1.
-    buildSquare(vertices, indices, colors);
+    buildBigSquare(vertices, indices, colors);
     // printVector(vertices);
 
     int xRes = 800;
     int yRes = 600;
 
+    // do orthographic projection matrix transform, modifying each coordinate
+    cout << "Starting projection transform" << endl;
+    vector<VEC3> projectionVertices =
+        orthographicProjectionMatrix(vertices, 0.0, 12.0, 0.0, 12.0, 12.0, 0.0);
+
     // we do a viewport matrix transform, modifying each coordinate
     cout << "Starting viewport transform" << endl;
-    vector<VEC3> transformedVertices = viewportMatrix(vertices, xRes, yRes);
-    printVector(transformedVertices);
-    testViewportMatrix(transformedVertices, xRes, yRes);
+    vector<VEC3> viewportVertices =
+        viewportMatrix(projectionVertices, xRes, yRes);
+    // printVector(viewportVertices);
+    testViewportMatrix(viewportVertices, xRes, yRes);
 
     // do the triangleRasterization
     cout << "Starting triangle rasterization" << endl;
     float* ppm =
-        triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
+        triangleRasterization(viewportVertices, indices, colors, xRes, yRes);
     if (!ppm) {
         cout << "Invalid ppm" << endl;
         return -1;
@@ -268,7 +277,7 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// pipeline routine
+// pipeline routines
 
 vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     // the viewport transform is basically a scaling operation
@@ -291,6 +300,35 @@ vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
         VEC4 extended = extend(vertices[i]);
         // multiply with the mvp
         VEC4 multiplied = mvp * extended;
+        // truncate back to (3,1) vector
+        VEC3 truncated = truncate(multiplied);
+        // set that as the new vector
+        transformedVertices.push_back(truncated);
+    }
+
+    return transformedVertices;
+}
+
+vector<VEC3> orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
+                                          Real right, Real bottom, Real top,
+                                          Real near, Real far) {
+    MATRIX4 mortho;
+    mortho.setZero();
+
+    mortho(0, 0) = 2.0 / (right - left);
+    mortho(0, 3) = -(((2.0 * left) / (right - left)) + 1);
+    mortho(1, 1) = 2.0 / (top - bottom);
+    mortho(1, 3) = -(((2.0 * bottom) / (top - bottom)) + 1);
+    mortho(2, 2) = 2.0 / (near - far);
+    mortho(2, 3) = -(((2.0 * far) / (near - far)) + 1);
+    mortho(3, 3) = 1.0;
+
+    vector<VEC3> transformedVertices;
+    for (int i = 0; i < vertices.size(); i++) {
+        // first, convert the (3,1) vector to a (4,1)
+        VEC4 extended = extend(vertices[i]);
+        // multiply with the mvp
+        VEC4 multiplied = mortho * extended;
         // truncate back to (3,1) vector
         VEC3 truncated = truncate(multiplied);
         // set that as the new vector
