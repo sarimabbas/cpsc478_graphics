@@ -11,13 +11,15 @@ using namespace std;
 // PROTOTYPES
 
 // pipeline routines
-vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
+MATRIX4 viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              vector<VEC3> colors, int xRes, int yRes,
                              bool interpolateColors = false);
-vector<VEC3> orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
-                                          Real right, Real bottom, Real top,
-                                          Real near, Real far);
+MATRIX4 orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
+                                     Real right, Real bottom, Real top,
+                                     Real near, Real far);
+MATRIX4 cameraMatrix(vector<VEC3> vertices, VEC3 eye, VEC3 lookAt, VEC3 up);
+
 // debugging routines
 template <typename T, typename A>
 void printVector(vector<T, A> const& vec);
@@ -245,21 +247,39 @@ int main(int argc, char** argv) {
     int yRes = 600;
 
     // do orthographic projection matrix transform, modifying each coordinate
+    // cout << "Starting camera transform" << endl;
+    MATRIX4 mcam = cameraMatrix(vertices, VEC3(0.2, 0.2, 1.0),
+                                VEC3(0.0, 0.0, 0.0), VEC3(0.0, 1.0, 0.0));
+
+    // do orthographic projection matrix transform, modifying each coordinate
     cout << "Starting projection transform" << endl;
-    vector<VEC3> projectionVertices =
+    MATRIX4 mortho =
         orthographicProjectionMatrix(vertices, 0.0, 12.0, 0.0, 12.0, 12.0, 0.0);
 
     // we do a viewport matrix transform, modifying each coordinate
     cout << "Starting viewport transform" << endl;
-    vector<VEC3> viewportVertices =
-        viewportMatrix(projectionVertices, xRes, yRes);
+    MATRIX4 mvp = viewportMatrix(vertices, xRes, yRes);
     // printVector(viewportVertices);
-    testViewportMatrix(viewportVertices, xRes, yRes);
+    // testViewportMatrix(vertices, xRes, yRes);
+
+    vector<VEC3> transformedVertices;
+    MATRIX4 compose = mvp * mortho * mcam;
+
+    for (int i = 0; i < vertices.size(); i++) {
+        // first, convert the (3,1) vector to a (4,1)
+        VEC4 extended = extend(vertices[i]);
+        // multiply with the mvp
+        VEC4 multiplied = compose * extended;
+        // truncate back to (3,1) vector
+        VEC3 truncated = truncate(multiplied);
+        // set that as the new vector
+        transformedVertices.push_back(truncated);
+    }
 
     // do the triangleRasterization
     cout << "Starting triangle rasterization" << endl;
     float* ppm =
-        triangleRasterization(viewportVertices, indices, colors, xRes, yRes);
+        triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
     if (!ppm) {
         cout << "Invalid ppm" << endl;
         return -1;
@@ -279,7 +299,7 @@ int main(int argc, char** argv) {
 
 // pipeline routines
 
-vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
+MATRIX4 viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     // the viewport transform is basically a scaling operation
     // it takes the canonical volume and stretches it to xRes * yRes * 2 box
     // (the z-axis is unchanged)
@@ -294,24 +314,26 @@ vector<VEC3> viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     mvp(2, 2) = 1;
     mvp(3, 3) = 1;
 
-    vector<VEC3> transformedVertices;
-    for (int i = 0; i < vertices.size(); i++) {
-        // first, convert the (3,1) vector to a (4,1)
-        VEC4 extended = extend(vertices[i]);
-        // multiply with the mvp
-        VEC4 multiplied = mvp * extended;
-        // truncate back to (3,1) vector
-        VEC3 truncated = truncate(multiplied);
-        // set that as the new vector
-        transformedVertices.push_back(truncated);
-    }
+    return mvp;
 
-    return transformedVertices;
+    // vector<VEC3> transformedVertices;
+    // for (int i = 0; i < vertices.size(); i++) {
+    //     // first, convert the (3,1) vector to a (4,1)
+    //     VEC4 extended = extend(vertices[i]);
+    //     // multiply with the mvp
+    //     VEC4 multiplied = mvp * extended;
+    //     // truncate back to (3,1) vector
+    //     VEC3 truncated = truncate(multiplied);
+    //     // set that as the new vector
+    //     transformedVertices.push_back(truncated);
+    // }
+
+    // return transformedVertices;
 }
 
-vector<VEC3> orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
-                                          Real right, Real bottom, Real top,
-                                          Real near, Real far) {
+MATRIX4 orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
+                                     Real right, Real bottom, Real top,
+                                     Real near, Real far) {
     MATRIX4 mortho;
     mortho.setZero();
 
@@ -323,19 +345,73 @@ vector<VEC3> orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
     mortho(2, 3) = -(((2.0 * far) / (near - far)) + 1);
     mortho(3, 3) = 1.0;
 
-    vector<VEC3> transformedVertices;
-    for (int i = 0; i < vertices.size(); i++) {
-        // first, convert the (3,1) vector to a (4,1)
-        VEC4 extended = extend(vertices[i]);
-        // multiply with the mvp
-        VEC4 multiplied = mortho * extended;
-        // truncate back to (3,1) vector
-        VEC3 truncated = truncate(multiplied);
-        // set that as the new vector
-        transformedVertices.push_back(truncated);
-    }
+    return mortho;
 
-    return transformedVertices;
+    // vector<VEC3> transformedVertices;
+    // for (int i = 0; i < vertices.size(); i++) {
+    //     // first, convert the (3,1) vector to a (4,1)
+    //     VEC4 extended = extend(vertices[i]);
+    //     // multiply with the mvp
+    //     VEC4 multiplied = mortho * extended;
+    //     // truncate back to (3,1) vector
+    //     VEC3 truncated = truncate(multiplied);
+    //     // set that as the new vector
+    //     transformedVertices.push_back(truncated);
+    // }
+
+    // return transformedVertices;
+}
+
+MATRIX4 cameraMatrix(vector<VEC3> vertices, VEC3 eye, VEC3 lookAt, VEC3 up) {
+    // first get the gaze direction
+    VEC3 gaze = lookAt - eye;
+    VEC3 w = -gaze / gaze.norm();
+    VEC3 upCrossW = up.cross(w);
+    VEC3 u = upCrossW / upCrossW.norm();
+    VEC3 v = w.cross(u);
+
+    MATRIX4 left;
+    left.setZero();
+    left(0, 0) = u[0];
+    left(0, 1) = u[1];
+    left(0, 2) = u[2];
+    left(1, 0) = v[0];
+    left(1, 1) = v[1];
+    left(1, 2) = v[2];
+    left(2, 0) = w[0];
+    left(2, 1) = w[1];
+    left(2, 2) = w[2];
+    left(3, 3) = 1.0;
+
+    MATRIX4 right;
+    right.setZero();
+    right(0, 0) = 1.0;
+    right(0, 3) = -eye[0];
+    right(1, 1) = 1.0;
+    right(1, 3) = -eye[1];
+    right(2, 2) = 1.0;
+    right(2, 3) = -eye[2];
+    right(3, 3) = 1.0;
+
+    MATRIX4 mcam;
+    mcam.setZero();
+    mcam = left * right;
+
+    return mcam;
+
+    // vector<VEC3> transformedVertices;
+    // for (int i = 0; i < vertices.size(); i++) {
+    //     // first, convert the (3,1) vector to a (4,1)
+    //     VEC4 extended = extend(vertices[i]);
+    //     // multiply with the mcam
+    //     VEC4 multiplied = mcam * extended;
+    //     // truncate back to (3,1) vector
+    //     VEC3 truncated = truncate(multiplied);
+    //     // set that as the new vector
+    //     transformedVertices.push_back(truncated);
+    // }
+
+    // return transformedVertices;
 }
 
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
@@ -366,15 +442,6 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
     // for each pixel
     for (int i = 0; i < xRes; i++) {
         for (int j = 0; j < yRes; j++) {
-            // debug traps
-            if (i == 25 && j == 18) {
-                cout << "Trapped" << endl;
-            }
-
-            if (i == 0 && j == 17) {
-                cout << "Trapped" << endl;
-            }
-
             // for each primitive (i.e. triangle)
             for (int k = 0; k < indices.size(); k++) {
                 VEC3I triangle = indices[k];
