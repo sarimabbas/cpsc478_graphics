@@ -11,14 +11,13 @@ using namespace std;
 // PROTOTYPES
 
 // pipeline routines
-MATRIX4 viewportMatrix(vector<VEC3> vertices, int xRes, int yRes);
+MATRIX4 viewportMatrix(int xRes, int yRes);
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              vector<VEC3> colors, int xRes, int yRes,
                              bool interpolateColors = false);
-MATRIX4 orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
-                                     Real right, Real bottom, Real top,
-                                     Real near, Real far);
-MATRIX4 cameraMatrix(vector<VEC3> vertices, VEC3 eye, VEC3 lookAt, VEC3 up);
+MATRIX4 orthographicProjectionMatrix(Real left, Real right, Real bottom,
+                                     Real top, Real near, Real far);
+MATRIX4 cameraMatrix(VEC3 eye, VEC3 lookAt, VEC3 up);
 
 // debugging routines
 template <typename T, typename A>
@@ -247,18 +246,19 @@ int main(int argc, char** argv) {
     int yRes = 600;
 
     // do orthographic projection matrix transform, modifying each coordinate
-    // cout << "Starting camera transform" << endl;
-    MATRIX4 mcam = cameraMatrix(vertices, VEC3(0.2, 0.2, 1.0),
-                                VEC3(0.0, 0.0, 0.0), VEC3(0.0, 1.0, 0.0));
+    cout << "Starting camera transform" << endl;
+    MATRIX4 mcam = cameraMatrix(VEC3(0.2, 0.2, 1.0), VEC3(0.0, 0.0, 0.0),
+                                VEC3(0.0, 1.0, 0.0));
 
     // do orthographic projection matrix transform, modifying each coordinate
     cout << "Starting projection transform" << endl;
     MATRIX4 mortho =
-        orthographicProjectionMatrix(vertices, 0.0, 12.0, 0.0, 12.0, 12.0, 0.0);
+        orthographicProjectionMatrix(0.0, 12.0, 0.0, 12.0, 12.0, 0.0);
 
     // we do a viewport matrix transform, modifying each coordinate
     cout << "Starting viewport transform" << endl;
-    MATRIX4 mvp = viewportMatrix(vertices, xRes, yRes);
+    MATRIX4 mvp = viewportMatrix(xRes, yRes);
+
     // printVector(viewportVertices);
     // testViewportMatrix(vertices, xRes, yRes);
 
@@ -288,10 +288,6 @@ int main(int argc, char** argv) {
     cout << "Writing ppm file" << endl;
     writePPM("rasterization.ppm", xRes, yRes, ppm);
 
-    // cout << "norm" << endl;
-    // VEC3 v0(1, 2, 3);
-    // cout << v0.squaredNorm() << endl;
-
     delete[] ppm;
 
     return 0;
@@ -299,7 +295,7 @@ int main(int argc, char** argv) {
 
 // pipeline routines
 
-MATRIX4 viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
+MATRIX4 viewportMatrix(int xRes, int yRes) {
     // the viewport transform is basically a scaling operation
     // it takes the canonical volume and stretches it to xRes * yRes * 2 box
     // (the z-axis is unchanged)
@@ -315,25 +311,10 @@ MATRIX4 viewportMatrix(vector<VEC3> vertices, int xRes, int yRes) {
     mvp(3, 3) = 1;
 
     return mvp;
-
-    // vector<VEC3> transformedVertices;
-    // for (int i = 0; i < vertices.size(); i++) {
-    //     // first, convert the (3,1) vector to a (4,1)
-    //     VEC4 extended = extend(vertices[i]);
-    //     // multiply with the mvp
-    //     VEC4 multiplied = mvp * extended;
-    //     // truncate back to (3,1) vector
-    //     VEC3 truncated = truncate(multiplied);
-    //     // set that as the new vector
-    //     transformedVertices.push_back(truncated);
-    // }
-
-    // return transformedVertices;
 }
 
-MATRIX4 orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
-                                     Real right, Real bottom, Real top,
-                                     Real near, Real far) {
+MATRIX4 orthographicProjectionMatrix(Real left, Real right, Real bottom,
+                                     Real top, Real near, Real far) {
     MATRIX4 mortho;
     mortho.setZero();
 
@@ -346,23 +327,9 @@ MATRIX4 orthographicProjectionMatrix(vector<VEC3> vertices, Real left,
     mortho(3, 3) = 1.0;
 
     return mortho;
-
-    // vector<VEC3> transformedVertices;
-    // for (int i = 0; i < vertices.size(); i++) {
-    //     // first, convert the (3,1) vector to a (4,1)
-    //     VEC4 extended = extend(vertices[i]);
-    //     // multiply with the mvp
-    //     VEC4 multiplied = mortho * extended;
-    //     // truncate back to (3,1) vector
-    //     VEC3 truncated = truncate(multiplied);
-    //     // set that as the new vector
-    //     transformedVertices.push_back(truncated);
-    // }
-
-    // return transformedVertices;
 }
 
-MATRIX4 cameraMatrix(vector<VEC3> vertices, VEC3 eye, VEC3 lookAt, VEC3 up) {
+MATRIX4 cameraMatrix(VEC3 eye, VEC3 lookAt, VEC3 up) {
     // first get the gaze direction
     VEC3 gaze = lookAt - eye;
     VEC3 w = -gaze / gaze.norm();
@@ -398,20 +365,6 @@ MATRIX4 cameraMatrix(vector<VEC3> vertices, VEC3 eye, VEC3 lookAt, VEC3 up) {
     mcam = left * right;
 
     return mcam;
-
-    // vector<VEC3> transformedVertices;
-    // for (int i = 0; i < vertices.size(); i++) {
-    //     // first, convert the (3,1) vector to a (4,1)
-    //     VEC4 extended = extend(vertices[i]);
-    //     // multiply with the mcam
-    //     VEC4 multiplied = mcam * extended;
-    //     // truncate back to (3,1) vector
-    //     VEC3 truncated = truncate(multiplied);
-    //     // set that as the new vector
-    //     transformedVertices.push_back(truncated);
-    // }
-
-    // return transformedVertices;
 }
 
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
