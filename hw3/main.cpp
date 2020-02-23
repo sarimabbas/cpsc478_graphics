@@ -16,18 +16,24 @@ void partTwo();
 void partThree();
 void partFour();
 void partFive();
+void partSix();
+void partSeven();
+void partEight(VEC3 eye = VEC3(1, 1, 1), VEC3 lookAt = VEC3(0, 0, 0),
+               VEC3 up = VEC3(0, 1, 0), bool custom = false);
 
 // pipeline routines
 MATRIX4 viewportMatrix(int xRes, int yRes);
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              vector<VEC3> colors, int xRes, int yRes,
-                             bool interpolateColors = false);
+                             bool interpolateColors = false,
+                             bool depthBuffering = false);
 MATRIX4 orthographicProjectionMatrix(Real left, Real right, Real bottom,
                                      Real top, Real near, Real far);
 MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near,
                                     Real far);
 MATRIX4 cameraMatrix(VEC3 eye, VEC3 lookAt, VEC3 up);
 vector<VEC3> transformVertices(vector<VEC3> vertices, MATRIX4 matrix);
+Real depthBuffering(Real z, Real near, Real far);
 
 // debugging routines
 template <typename T, typename A>
@@ -244,80 +250,32 @@ void buildCubePerVertexColors(vector<VEC3>& vertices, vector<VEC3I>& indices,
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
-    // partOne();
-    // partTwo();
-    // partThree();
-    // partFour();
-    partFive();
+    if (argc == 1) {
+        partOne();
+        partTwo();
+        partThree();
+        partFour();
+        partFive();
+        partSix();
+        partSeven();
 
-    return 0;
-    vector<VEC3> vertices;
-    vector<VEC3I> indices;
-    vector<VEC3> colors;
-    // the pre-provided geometries are in the canonical view volume
-    // the canonical view volumne is a cube centered at origin, with edges
-    // that go from -1 to +1.
-    // buildBigSquare(vertices, indices, colors);
-    buildCube(vertices, indices, colors);
-    // printVector(vertices);
-
-    int xRes = 800;
-    int yRes = 600;
-
-    // scale vertices by 0.5
-    vector<VEC3> scaledVertices;
-    for (int i = 0; i < vertices.size(); i++) {
-        scaledVertices.push_back(0.5 * vertices[i]);
+        cout << "Q8: Color interpolation" << endl;
+        partEight();
+    } else {
+        vector<Real> args;
+        for (int i = 1; i < argc; i++) {
+            args.push_back(stod(argv[i]));
+        }
+        if (args.size() != 9) {
+            cout << "Could not parse" << endl;
+            return -1;
+        }
+        VEC3 eye = VEC3(args[0], args[1], args[2]);
+        VEC3 lookAt = VEC3(args[3], args[4], args[5]);
+        VEC3 up = VEC3(args[6], args[7], args[8]);
+        cout << "Custom specifying: eye, lookAt and up" << endl;
+        partEight(eye, lookAt, up, true);
     }
-
-    // do orthographic projection matrix transform, modifying each coordinate
-    cout << "Starting camera transform" << endl;
-    MATRIX4 mcam = cameraMatrix(VEC3(1.0, 1.0, 1.0), VEC3(0.0, 0.0, 0.0),
-                                VEC3(0.0, 1.0, 0.0));
-
-    // do orthographic projection matrix transform, modifying each coordinate
-    cout << "Starting projection transform" << endl;
-    MATRIX4 mortho =
-        orthographicProjectionMatrix(0.0, 12.0, 0.0, 12.0, 12.0, 0.0);
-
-    // get the perspective matrix
-    cout << "Starting perspective projection transform" << endl;
-    MATRIX mp = perspectiveProjectionMatrix(65.0, 4.0 / 3.0, 1.0, 100.0);
-
-    // we do a viewport matrix transform, modifying each coordinate
-    cout << "Starting viewport transform" << endl;
-    MATRIX4 mvp = viewportMatrix(xRes, yRes);
-
-    // printVector(viewportVertices);
-    // testViewportMatrix(vertices, xRes, yRes);
-
-    vector<VEC3> transformedVertices;
-    MATRIX4 compose = mvp * mp * mcam;
-
-    for (int i = 0; i < vertices.size(); i++) {
-        // first, convert the (3,1) vector to a (4,1)
-        VEC4 extended = extend(vertices[i]);
-        // multiply with the mvp
-        VEC4 multiplied = compose * extended;
-        // truncate back to (3,1) vector
-        VEC3 truncated = truncate(multiplied);
-        // set that as the new vector
-        transformedVertices.push_back(truncated);
-    }
-
-    // do the triangleRasterization
-    cout << "Starting triangle rasterization" << endl;
-    float* ppm =
-        triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
-    if (!ppm) {
-        cout << "Invalid ppm" << endl;
-        return -1;
-    }
-    // write the PPM file
-    cout << "Writing ppm file" << endl;
-    writePPM("rasterization.ppm", xRes, yRes, ppm);
-
-    delete[] ppm;
 
     return 0;
 }
@@ -338,6 +296,7 @@ vector<VEC3> transformVertices(vector<VEC3> vertices, MATRIX4 matrix) {
 }
 
 void partOne() {
+    cout << "Q1: Viewport Matrix" << endl;
     vector<VEC3> vertices;
     vector<VEC3I> indices;
     vector<VEC3> colors;
@@ -363,6 +322,7 @@ void partOne() {
 }
 
 void partTwo() {
+    cout << "Q2: Triangle Rasterization" << endl;
     vector<VEC3> vertices;
     vector<VEC3I> indices;
     vector<VEC3> colors;
@@ -383,6 +343,7 @@ void partTwo() {
 }
 
 void partThree() {
+    cout << "Q3: Orthographic Projection Matrix" << endl;
     vector<VEC3> vertices;
     vector<VEC3I> indices;
     vector<VEC3> colors;
@@ -412,6 +373,7 @@ void partThree() {
 }
 
 void partFour() {
+    cout << "Q4: Camera Matrix" << endl;
     vector<VEC3> vertices;
     vector<VEC3I> indices;
     vector<VEC3> colors;
@@ -432,11 +394,32 @@ void partFour() {
     VEC3 up = VEC3(0.0, 1.0, 0.0);
 
     MATRIX4 mvp = viewportMatrix(xRes, yRes);
+
+    // cout << "mvp q4" << endl;
+    // cout << mvp << endl;
+
     MATRIX4 mortho =
         orthographicProjectionMatrix(left, right, bottom, top, near, far);
+
+    // cout << "mortho q4" << endl;
+    // cout << mortho << endl;
+
     MATRIX4 mcam = cameraMatrix(eye, lookAt, up);
+
+    // cout << "mcam q4" << endl;
+    // cout << mcam << endl;
+
     MATRIX4 compose = mvp * mortho * mcam;
+
+    // cout << "compose" << endl;
+    // cout << compose << endl;
+
     vector<VEC3> transformedVertices = transformVertices(vertices, compose);
+
+    // cout << "transformed vertices" << endl;
+    // for (int i = 0; i < transformedVertices.size(); i++) {
+    //     cout << transformedVertices[i] << endl;
+    // }
 
     float* ppm =
         triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
@@ -446,6 +429,7 @@ void partFour() {
 }
 
 void partFive() {
+    cout << "Q5: Perspective Projection Matrix" << endl;
     vector<VEC3> vertices;
     vector<VEC3I> indices;
     vector<VEC3> colors;
@@ -458,36 +442,226 @@ void partFive() {
     Real right = 12.0;
     Real bottom = 0.0;
     Real top = 12.0;
+
     Real near = 1.0;
     Real far = 100.0;
 
-    VEC3 eye = VEC3(1.0, 1.0, 1.0);
-    VEC3 lookAt = VEC3(0.0, 0.0, 0.0);
-    VEC3 up = VEC3(0.0, 1.0, 0.0);
+    VEC3 eye = VEC3(1, 1, 1);
+    VEC3 lookAt = VEC3(0, 0, 0);
+    VEC3 up = VEC3(0, 1, 0);
 
     Real fovy = 65.0;
     Real aspect = 4.0 / 3.0;
 
     MATRIX4 mvp = viewportMatrix(xRes, yRes);
+
+    // cout << "viewport matrix" << endl;
+    // cout << mvp << endl;
+
     MATRIX4 mortho =
         orthographicProjectionMatrix(left, right, bottom, top, near, far);
     MATRIX4 mcam = cameraMatrix(eye, lookAt, up);
+
+    // cout << "camera matrix" << endl;
+    // cout << mcam << endl;
+
+    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far);
+
+    // cout << "perspective projection" << endl;
+    // cout << mp << endl;
 
     // scale vertices
     vector<VEC3> scaledVertices;
     for (int i = 0; i < vertices.size(); i++) {
         scaledVertices.push_back(0.5 * vertices[i]);
     }
-    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far);
 
+    // prepare compose
     MATRIX4 compose = mp * mvp * mcam;
-    vector<VEC3> transformedVertices =
-        transformVertices(scaledVertices, compose);
+
+    // apply the transforms, but don't truncate
+    vector<VEC3> transformedVertices;
+    for (int i = 0; i < scaledVertices.size(); i++) {
+        VEC4 transformed = compose * extend(scaledVertices[i]);
+        transformedVertices.push_back(truncate(transformed));
+    }
 
     float* ppm =
         triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
 
     writePPM("5.ppm", xRes, yRes, ppm);
+    delete[] ppm;
+}
+
+void partSix() {
+    cout << "Q6: Perspective Divide" << endl;
+    vector<VEC3> vertices;
+    vector<VEC3I> indices;
+    vector<VEC3> colors;
+    buildCube(vertices, indices, colors);
+
+    int xRes = 800;
+    int yRes = 600;
+
+    Real left = 0.0;
+    Real right = 12.0;
+    Real bottom = 0.0;
+    Real top = 12.0;
+
+    Real near = 1.0;
+    Real far = 100.0;
+
+    VEC3 eye = VEC3(1, 1, 1);
+    VEC3 lookAt = VEC3(0, 0, 0);
+    VEC3 up = VEC3(0, 1, 0);
+
+    Real fovy = 65;
+    Real aspect = 4.0 / 3.0;
+
+    MATRIX4 mvp = viewportMatrix(xRes, yRes);
+    // MATRIX4 mortho =
+    //     orthographicProjectionMatrix(left, right, bottom, top, near, far);
+    MATRIX4 mcam = cameraMatrix(eye, lookAt, up);
+    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far);
+
+    // scale vertices
+    vector<VEC3> scaledVertices;
+    for (int i = 0; i < vertices.size(); i++) {
+        scaledVertices.push_back(0.5 * vertices[i]);
+    }
+
+    // prepare compose
+    MATRIX4 compose = mvp * mp * mcam;
+
+    // apply the transforms, but don't truncate
+    vector<VEC3> transformedVertices;
+    for (int i = 0; i < scaledVertices.size(); i++) {
+        VEC4 transformed = compose * extend(scaledVertices[i]);
+        // apply perspective divide
+        transformed = transformed / transformed[3];
+        transformedVertices.push_back(truncate(transformed));
+    }
+
+    float* ppm =
+        triangleRasterization(transformedVertices, indices, colors, xRes, yRes);
+
+    writePPM("6.ppm", xRes, yRes, ppm);
+    delete[] ppm;
+}
+
+void partSeven() {
+    cout << "Q7: Z-Buffering" << endl;
+    vector<VEC3> vertices;
+    vector<VEC3I> indices;
+    vector<VEC3> colors;
+    buildCube(vertices, indices, colors);
+
+    int xRes = 800;
+    int yRes = 600;
+
+    Real left = 0.0;
+    Real right = 12.0;
+    Real bottom = 0.0;
+    Real top = 12.0;
+
+    Real near = 1.0;
+    Real far = 100.0;
+
+    VEC3 eye = VEC3(1, 1, 1);
+    VEC3 lookAt = VEC3(0, 0, 0);
+    VEC3 up = VEC3(0, 1, 0);
+
+    Real fovy = 65;
+    Real aspect = 4.0 / 3.0;
+
+    MATRIX4 mvp = viewportMatrix(xRes, yRes);
+    // MATRIX4 mortho =
+    //     orthographicProjectionMatrix(left, right, bottom, top, near, far);
+    MATRIX4 mcam = cameraMatrix(eye, lookAt, up);
+    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far);
+
+    // scale vertices
+    vector<VEC3> scaledVertices;
+    for (int i = 0; i < vertices.size(); i++) {
+        scaledVertices.push_back(0.5 * vertices[i]);
+    }
+
+    // prepare compose
+    MATRIX4 compose = mvp * mp * mcam;
+
+    // apply the transforms, but don't truncate
+    vector<VEC3> transformedVertices;
+    for (int i = 0; i < scaledVertices.size(); i++) {
+        VEC4 transformed = compose * extend(scaledVertices[i]);
+        // apply perspective divide
+        transformed = transformed / transformed[3];
+        transformedVertices.push_back(truncate(transformed));
+    }
+
+    float* ppm = triangleRasterization(transformedVertices, indices, colors,
+                                       xRes, yRes, false, true);
+
+    writePPM("7.ppm", xRes, yRes, ppm);
+    delete[] ppm;
+}
+
+void partEight(VEC3 eye, VEC3 lookAt, VEC3 up, bool custom) {
+    vector<VEC3> vertices;
+    vector<VEC3I> indices;
+    vector<VEC3> colors;
+    buildCubePerVertexColors(vertices, indices, colors);
+
+    int xRes = 800;
+    int yRes = 600;
+
+    // Real left = 0.0;
+    // Real right = 12.0;
+    // Real bottom = 0.0;
+    // Real top = 12.0;
+
+    Real near = 1.0;
+    Real far = 100.0;
+
+    // VEC3 eye = VEC3(1, 1, 1);
+    // VEC3 lookAt = VEC3(0, 0, 0);
+    // VEC3 up = VEC3(0, 1, 0);
+
+    Real fovy = 65;
+    Real aspect = 4.0 / 3.0;
+
+    MATRIX4 mvp = viewportMatrix(xRes, yRes);
+    // MATRIX4 mortho =
+    //     orthographicProjectionMatrix(left, right, bottom, top, near, far);
+    MATRIX4 mcam = cameraMatrix(eye, lookAt, up);
+    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far);
+
+    // scale vertices
+    vector<VEC3> scaledVertices;
+    for (int i = 0; i < vertices.size(); i++) {
+        scaledVertices.push_back(0.5 * vertices[i]);
+    }
+
+    // prepare compose
+    MATRIX4 compose = mvp * mp * mcam;
+
+    // apply the transforms, but don't truncate
+    vector<VEC3> transformedVertices;
+    for (int i = 0; i < scaledVertices.size(); i++) {
+        VEC4 transformed = compose * extend(scaledVertices[i]);
+        // apply perspective divide
+        transformed = transformed / transformed[3];
+        transformedVertices.push_back(truncate(transformed));
+    }
+
+    float* ppm = triangleRasterization(transformedVertices, indices, colors,
+                                       xRes, yRes, true, true);
+
+    if (custom) {
+        writePPM("custom.ppm", xRes, yRes, ppm);
+    } else {
+        writePPM("8.ppm", xRes, yRes, ppm);
+    }
+
     delete[] ppm;
 }
 
@@ -503,12 +677,12 @@ MATRIX4 viewportMatrix(int xRes, int yRes) {
     MATRIX4 mvp;
     mvp.setZero();
 
-    mvp(0, 0) = xRes / 2;
-    mvp(0, 3) = xRes / 2;
-    mvp(1, 1) = yRes / 2;
-    mvp(1, 3) = yRes / 2;
-    mvp(2, 2) = 1;
-    mvp(3, 3) = 1;
+    mvp(0, 0) = xRes / 2.0;
+    mvp(0, 3) = (xRes - 1.0) / 2.0;
+    mvp(1, 1) = yRes / 2.0;
+    mvp(1, 3) = (yRes - 1.0) / 2.0;
+    mvp(2, 2) = 1.0;
+    mvp(3, 3) = 1.0;
 
     return mvp;
 }
@@ -573,7 +747,7 @@ MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near,
 
     mp.setZero();
 
-    Real f = 1.0 / tan(degreesToRadians(fovy) / 2.0);
+    Real f = 1.0 / tan(degreesToRadians(fovy / 2.0));
 
     mp(0, 0) = f / aspect;
     mp(1, 1) = f;
@@ -586,7 +760,7 @@ MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near,
 
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              vector<VEC3> colors, int xRes, int yRes,
-                             bool interpolateColors) {
+                             bool interpolateColors, bool depthBuffering) {
     // first, init an image
     float* ppm = allocatePPM(xRes, yRes);
 
@@ -609,6 +783,14 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
         triangleAreas.push_back(fullArea);
     }
 
+    // create a z-buffer
+    Real zBuffer[xRes][yRes];
+    for (int i = 0; i < xRes; i++) {
+        for (int j = 0; j < yRes; j++) {
+            zBuffer[i][j] = INFINITY;
+        }
+    }
+
     // for each pixel
     for (int i = 0; i < xRes; i++) {
         for (int j = 0; j < yRes; j++) {
@@ -621,14 +803,10 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
 
                 // split the full triangle via the pixel coordinate
                 // it does not appear that the z coordinate is important
-                VEC3 pointP = VEC3(i, j, 0.5);
+                VEC3 pointP = VEC3(i, j, 0.0);
                 VEC3 crossA = (pointC - pointB).cross(pointP - pointB);
                 VEC3 crossB = (pointA - pointC).cross(pointP - pointC);
                 VEC3 crossC = (pointB - pointA).cross(pointP - pointA);
-
-                // Real areaA = 0.5 * (crossA.norm());
-                // Real areaB = 0.5 * (crossB.norm());
-                // Real areaC = 0.5 * (crossC.norm());
 
                 Real alpha = triangleCrosses[k].dot(crossA) /
                              triangleCrosses[k].squaredNorm();
@@ -641,29 +819,54 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                 if (betweenZeroAndOneInclusive(alpha) &&
                     betweenZeroAndOneInclusive(beta) &&
                     betweenZeroAndOneInclusive(gamma)) {
-                    Real color = (alpha * colors[k][0]) +
-                                 (beta * colors[k][1]) + (gamma * colors[k][2]);
+                    // implement z-buffering
+                    // find z-value of the pixel
+                    Real interpolatedZ = (alpha * pointA[2]) +
+                                         (beta * pointB[2]) +
+                                         (gamma * pointC[2]);
+
                     int index = indexIntoPPM(i, j, xRes, yRes, true);
-                    if (interpolateColors) {
-                        ppm[index] = colors[k][0] * alpha * 255;
-                        ppm[index + 1] = colors[k][1] * beta * 255;
-                        ppm[index + 2] = colors[k][2] * gamma * 255;
+
+                    if (depthBuffering) {
+                        if (interpolatedZ < zBuffer[i][j]) {
+                            zBuffer[i][j] = interpolatedZ;
+
+                            if (interpolateColors) {
+                                VEC3 color = (alpha * colors[triangle[0]]) +
+                                             (beta * colors[triangle[1]]) +
+                                             (gamma * colors[triangle[2]]);
+                                ppm[index] = color[0] * 255;
+                                ppm[index + 1] = color[1] * 255;
+                                ppm[index + 2] = color[2] * 255;
+                            } else {
+                                ppm[index] = colors[k][0] * 255;
+                                ppm[index + 1] = colors[k][1] * 255;
+                                ppm[index + 2] = colors[k][2] * 255;
+                            }
+                        }
                     } else {
-                        ppm[index] = colors[k][0] * 255;
-                        ppm[index + 1] = colors[k][1] * 255;
-                        ppm[index + 2] = colors[k][2] * 255;
+                        if (interpolateColors) {
+                            VEC3 color = (alpha * colors[triangle[0]]) +
+                                         (beta * colors[triangle[1]]) +
+                                         (gamma * colors[triangle[2]]);
+                            ppm[index] = color[0] * 255;
+                            ppm[index + 1] = color[1] * 255;
+                            ppm[index + 2] = color[2] * 255;
+                        } else {
+                            ppm[index] = colors[k][0] * 255;
+                            ppm[index + 1] = colors[k][1] * 255;
+                            ppm[index + 2] = colors[k][2] * 255;
+                        }
                     }
                 }
-
-                // writePPM("rasterization.ppm", xRes, yRes, ppm);
             }
         }
     }
 
-    // TODO: remove
-    // return NULL;
     return ppm;
 }
+
+Real depthBuffering(Real z, Real near, Real far) {}
 
 // debugging routines
 
