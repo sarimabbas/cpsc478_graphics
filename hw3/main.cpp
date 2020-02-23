@@ -819,6 +819,8 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                 if (betweenZeroAndOneInclusive(alpha) &&
                     betweenZeroAndOneInclusive(beta) &&
                     betweenZeroAndOneInclusive(gamma)) {
+                    // cout << "A, B, G: " << alpha << ", " << beta << ", "
+                    //      << gamma << endl;
                     // implement z-buffering
                     // find z-value of the pixel
                     Real interpolatedZ = (alpha * pointA[2]) +
