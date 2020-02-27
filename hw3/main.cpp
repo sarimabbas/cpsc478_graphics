@@ -29,11 +29,10 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              bool depthBuffering = false);
 MATRIX4 orthographicProjectionMatrix(Real left, Real right, Real bottom,
                                      Real top, Real near, Real far);
-MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near,
-                                    Real far);
+MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near, Real far,
+                                    Real modifier = 1.0);
 MATRIX4 cameraMatrix(VEC3 eye, VEC3 lookAt, VEC3 up);
 vector<VEC3> transformVertices(vector<VEC3> vertices, MATRIX4 matrix);
-Real depthBuffering(Real z, Real near, Real far);
 
 // debugging routines
 template <typename T, typename A>
@@ -258,7 +257,6 @@ int main(int argc, char** argv) {
         partFive();
         partSix();
         partSeven();
-
         cout << "Q8: Color interpolation" << endl;
         partEight();
     } else {
@@ -465,7 +463,7 @@ void partFive() {
     // cout << "camera matrix" << endl;
     // cout << mcam << endl;
 
-    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far);
+    MATRIX4 mp = perspectiveProjectionMatrix(fovy, aspect, near, far, 0.85);
 
     // cout << "perspective projection" << endl;
     // cout << mp << endl;
@@ -741,13 +739,16 @@ MATRIX4 cameraMatrix(VEC3 eye, VEC3 lookAt, VEC3 up) {
     return mcam;
 }
 
-MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near,
-                                    Real far) {
+// Attribution:
+// https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+// (the one from Prof. Kim's notes did not incorporate fovy and aspect)
+MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near, Real far,
+                                    Real modifier) {
     MATRIX4 mp;
 
     mp.setZero();
 
-    Real f = 1.0 / tan(degreesToRadians(fovy / 2.0));
+    Real f = modifier * 1.0 / tan(degreesToRadians(fovy / 2.0));
 
     mp(0, 0) = f / aspect;
     mp(1, 1) = f;
@@ -758,6 +759,8 @@ MATRIX4 perspectiveProjectionMatrix(Real fovy, Real aspect, Real near,
     return mp;
 }
 
+// Attribution: Professor Kim's notes and the Tiger textbook (which explains
+// what to do in 3D)
 float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
                              vector<VEC3> colors, int xRes, int yRes,
                              bool interpolateColors, bool depthBuffering) {
@@ -867,8 +870,6 @@ float* triangleRasterization(vector<VEC3> vertices, vector<VEC3I> indices,
 
     return ppm;
 }
-
-Real depthBuffering(Real z, Real near, Real far) {}
 
 // debugging routines
 
