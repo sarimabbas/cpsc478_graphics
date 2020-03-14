@@ -1,75 +1,249 @@
+#include <assert.h>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <cmath>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 #include "SETTINGS.h"
 
 using namespace std;
 
-///////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////
-void readPPM(const string& filename, int& xRes, int& yRes, float*& values)
-{
-  // try to open the file
-  FILE *fp;
-  fp = fopen(filename.c_str(), "rb");
-  if (fp == NULL)
-  {
-    cout << " Could not open file \"" << filename.c_str() << "\" for reading." << endl;
-    cout << " Make sure you're not trying to read from a weird location or with a " << endl;
-    cout << " strange filename. Bailing ... " << endl;
-    exit(0);
-  }
+// forward declaration
+class Camera;
+class Ray;
+Real degreesToRadians(Real degrees);
+Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
+float* allocatePPM(int xRes, int yRes);
+void initPPM(float* values, int xRes, int yRes);
+int indexIntoPPM(int x, int y, int xRes, int yRes,
+                 bool originBottomLeft = false);
 
-  // get the dimensions
-  fscanf(fp, "P6\n%d %d\n255\n", &xRes, &yRes);
-  int totalCells = xRes * yRes;
+class Camera {
+   public:
+    VEC3 eye;
+    VEC3 lookAt;
+    VEC3 up;
+    int xRes;
+    int yRes;
+    Real distanceToPlane;
+    Real fovy;
+    Real aspect;
 
-  // grab the pixel values
-  unsigned char* pixels = new unsigned char[3 * totalCells];
-  fread(pixels, 1, totalCells * 3, fp);
+    Camera(VEC3 eye, VEC3 lookAt, VEC3 up, int xRes, int yRes,
+           Real distanceToPlane, Real fovy)
+        : eye(eye),
+          lookAt(lookAt),
+          up(up),
+          xRes(xRes),
+          yRes(yRes),
+          distanceToPlane(distanceToPlane),
+          fovy(fovy),
+          aspect((Real)xRes / (Real)yRes) {}
+};
 
-  // copy to a nicer data type
-  values = new float[3 * totalCells];
-  for (int i = 0; i < 3 * totalCells; i++)
-    values[i] = pixels[i];
+class Ray {
+   public:
+    VEC3 origin;
+    VEC3 direction;
+};
 
-  // clean up
-  delete[] pixels;
-  fclose(fp);
-  cout << " Read in file " << filename.c_str() << endl;
+ostream& operator<<(ostream& out, const Ray& r) {
+    out << "[Origin: " << r.origin << ", Direction: " << r.direction << "]";
 }
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-void writePPM(const string& filename, int& xRes, int& yRes, const float* values)
-{
-  int totalCells = xRes * yRes;
-  unsigned char* pixels = new unsigned char[3 * totalCells];
-  for (int i = 0; i < 3 * totalCells; i++)
-    pixels[i] = values[i];
+void readPPM(const string& filename, int& xRes, int& yRes, float*& values) {
+    // try to open the file
+    FILE* fp;
+    fp = fopen(filename.c_str(), "rb");
+    if (fp == NULL) {
+        cout << " Could not open file \"" << filename.c_str()
+             << "\" for reading." << endl;
+        cout << " Make sure you're not trying to read from a weird location or "
+                "with a "
+             << endl;
+        cout << " strange filename. Bailing ... " << endl;
+        exit(0);
+    }
 
-  FILE *fp;
-  fp = fopen(filename.c_str(), "wb");
-  if (fp == NULL)
-  {
-    cout << " Could not open file \"" << filename.c_str() << "\" for writing." << endl;
-    cout << " Make sure you're not trying to write from a weird location or with a " << endl;
-    cout << " strange filename. Bailing ... " << endl;
-    exit(0);
-  }
+    // get the dimensions
+    fscanf(fp, "P6\n%d %d\n255\n", &xRes, &yRes);
+    int totalCells = xRes * yRes;
 
-  fprintf(fp, "P6\n%d %d\n255\n", xRes, yRes);
-  fwrite(pixels, 1, totalCells * 3, fp);
-  fclose(fp);
-  delete[] pixels;
+    // grab the pixel values
+    unsigned char* pixels = new unsigned char[3 * totalCells];
+    fread(pixels, 1, totalCells * 3, fp);
+
+    // copy to a nicer data type
+    values = new float[3 * totalCells];
+    for (int i = 0; i < 3 * totalCells; i++) values[i] = pixels[i];
+
+    // clean up
+    delete[] pixels;
+    fclose(fp);
+    cout << " Read in file " << filename.c_str() << endl;
+}
+
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+void writePPM(const string& filename, int& xRes, int& yRes,
+              const float* values) {
+    int totalCells = xRes * yRes;
+    unsigned char* pixels = new unsigned char[3 * totalCells];
+    for (int i = 0; i < 3 * totalCells; i++) pixels[i] = values[i];
+
+    FILE* fp;
+    fp = fopen(filename.c_str(), "wb");
+    if (fp == NULL) {
+        cout << " Could not open file \"" << filename.c_str()
+             << "\" for writing." << endl;
+        cout << " Make sure you're not trying to write from a weird location "
+                "or with a "
+             << endl;
+        cout << " strange filename. Bailing ... " << endl;
+        exit(0);
+    }
+
+    fprintf(fp, "P6\n%d %d\n255\n", xRes, yRes);
+    fwrite(pixels, 1, totalCells * 3, fp);
+    fclose(fp);
+    delete[] pixels;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
-int main(int argc, char** argv)
-{
-  return 0;
+int main(int argc, char** argv) {
+    int xRes = 800;
+    int yRes = 600;
+    VEC3 eye = VEC3(0.0, 0.0, 0.0);
+    VEC3 lookAt = VEC3(0.0, 0.0, 1.0);
+    VEC3 up = VEC3(0.0, 1.0, 0.0);
+    Real distanceToNearPlane = 1.0;
+    Real fovy = 65;
+    Camera cam = Camera(eye, lookAt, up, xRes, yRes, distanceToNearPlane, fovy);
+
+    float* ppm = allocatePPM(xRes, yRes);
+
+    for (int i = 0; i < xRes; i++) {
+        for (int j = 0; j < yRes; j++) {
+            Ray r = rayGeneration(i, j, cam);
+            VEC3 normalizedDirection = r.direction / r.direction.norm();
+            int index = indexIntoPPM(i, j, xRes, yRes, true);
+            ppm[index] = abs(normalizedDirection[0] * 255);
+            // ppm[index + 1] = 0;
+            // ppm[index + 2] = 0;
+            // cout << r << endl;
+        }
+    }
+
+    writePPM("test.ppm", xRes, yRes, ppm);
+}
+
+Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
+    // construct an eye coordinate frame
+    // TODO: felicia says she used squaredNorm, but it doesn't make a difference
+    VEC3 gaze = cam.lookAt - cam.eye;
+    VEC3 W = -gaze / gaze.norm();
+    VEC3 upCrossW = cam.up.cross(W);
+    VEC3 U = upCrossW / upCrossW.norm();
+    VEC3 V = W.cross(U);
+
+    // convert fovy and aspect to top, right, bottom, left
+    Real rasterHeight =
+        2.0 * cam.distanceToPlane * tan(degreesToRadians(cam.fovy) / 2.0);
+    Real rasterWidth = rasterHeight * cam.aspect;
+    VEC3 center = cam.eye - (cam.distanceToPlane * W);
+    VEC3 bottomLeft =
+        center - (U * (rasterWidth / 2.0)) - (V * (rasterHeight / 2.0));
+    VEC3 bottomRight =
+        center + (U * (rasterWidth / 2.0)) - (V * (rasterHeight / 2.0));
+    VEC3 topRight =
+        center + (U * (rasterWidth / 2.0)) + (V * (rasterHeight / 2.0));
+
+    // assert that the z-coordinates of everything are the same (they should be)
+    assert((bottomLeft[2] == bottomRight[2]) &&
+           (bottomLeft[2] == topRight[2]) && (bottomRight[2] == topRight[2]));
+    // assert that the plane is, in fact, a plane (paranoia)
+    assert((bottomRight[0] == topRight[0]) &&
+           (bottomLeft[1] == bottomRight[1]));
+
+    Real top = topRight[1];
+    Real right = topRight[0];
+    Real bottom = bottomRight[1];
+    Real left = bottomLeft[0];
+
+    // cout << "T, R, B, L: " << top << ", " << right << ", " << bottom << ", "
+    //      << left << "]" << endl;
+
+    // assert that the bounds found this way match up with another way
+    Real rightMinusLeft = (bottomRight - bottomLeft).norm();
+    Real topMinusBottom = (topRight - bottomRight).norm();
+
+    // cout << top - bottom << ":" << topMinusBottom << endl;
+    // cout << right - left << ":" << rightMinusLeft << endl;
+
+    // assert(((top - bottom) == topMinusBottom) &&
+    //        ((right - left) == rightMinusLeft));
+
+    // go from pixel coordinates to orthographic raster
+    // coordinates. we offset the ray by half to make it
+    // pass through the pixel center on the raster image
+    Real u_raster =
+        left + (((right - left) * ((Real)pixel_i + 0.5)) / (Real)cam.xRes);
+    Real v_raster =
+        bottom + (((top - bottom) * ((Real)pixel_j + 0.5)) / (Real)cam.yRes);
+
+    // go from orthographic raster coordinates to perspective raster coordinates
+    Ray generate;
+    generate.direction =
+        (-cam.distanceToPlane * W) + (u_raster * U) + (v_raster * V);
+    generate.origin = cam.eye;
+
+    // cout << "[Origin: "
+    //      << "(" << generate.origin[0] << ", " << generate.origin[1] << ", "
+    //      << generate.origin[2] << "), ";
+
+    // cout << "Direction: "
+    //      << "(" << generate.direction[0] << ", " << generate.direction[1]
+    //      << ", " << generate.direction[2] << "]" << endl;
+
+    return generate;
+}
+
+Real degreesToRadians(Real degrees) { return (degrees)*M_PI / 180.0; }
+
+float* allocatePPM(int xRes, int yRes) {
+    float* values = new float[3 * xRes * yRes];
+    if (!values) {
+        cout << "Could not allocate values" << endl;
+        return NULL;
+    }
+    initPPM(values, xRes, yRes);
+    return values;
+}
+
+void initPPM(float* values, int xRes, int yRes) {
+    for (int i = 0; i < xRes * yRes * 3; i += 3) {
+        values[i] = 0;
+        values[i + 1] = 0;
+        values[i + 2] = 0;
+    }
+}
+
+int indexIntoPPM(int x, int y, int xRes, int yRes, bool originBottomLeft) {
+    int index = -1;
+
+    if (originBottomLeft) {
+        // bottom left origin
+        int newY = yRes - 1 - y;
+        index = (newY * xRes * 3) + (x * 3);
+
+    } else {
+        // top left origin (default)
+        index = (y * xRes * 3) + (x * 3);
+    }
+
+    return index;
 }
