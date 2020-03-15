@@ -12,12 +12,16 @@ using namespace std;
 // forward declaration
 class Camera;
 class Ray;
+class Shape;
+class Sphere;
 Real degreesToRadians(Real degrees);
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
 float* allocatePPM(int xRes, int yRes);
 void initPPM(float* values, int xRes, int yRes);
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
+bool intersectScene(vector<Shape*> scene, Ray ray);
+VEC3 rayColor(vector<Shape*> scene, Ray ray);
 
 class Camera {
    public:
@@ -52,6 +56,45 @@ ostream& operator<<(ostream& out, const Ray& r) {
     out << "[Origin: " << r.origin << ", Direction: " << r.direction << "]";
 }
 
+// shape class
+class Shape {
+   public:
+    virtual bool intersect(Ray ray) = 0;
+};
+
+class Sphere : public Shape {
+   public:
+    Real radius;
+    VEC3 center;
+    VEC3 color;
+
+    Sphere(Real radius, VEC3 center, VEC3 color)
+        : radius(radius), center(center), color(color) {}
+
+    bool intersect(Ray ray) {
+        Real A = ray.direction.dot(ray.direction);
+        Real B = (2 * ray.direction).dot(ray.origin - center);
+        Real C =
+            (ray.origin - center).dot(ray.origin - center) - (radius * radius);
+
+        Real discriminant = (B * B) - (4 * A * C);
+
+        if (discriminant < 0.0) {
+            return false;
+        } else {
+            return true;
+        }
+        // } else if (abs(discriminant) <
+        // std::numeric_limits<double>::epsilon()) {
+        //     // tangent to the surface
+        //     return true;
+        // } else if (discriminant > 0.0) {
+        //     // enters and exits surface
+        //     return true;
+        // }
+    }
+};
+
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 void readPPM(const string& filename, int& xRes, int& yRes, float*& values) {
@@ -61,7 +104,8 @@ void readPPM(const string& filename, int& xRes, int& yRes, float*& values) {
     if (fp == NULL) {
         cout << " Could not open file \"" << filename.c_str()
              << "\" for reading." << endl;
-        cout << " Make sure you're not trying to read from a weird location or "
+        cout << " Make sure you're not trying to read from a weird "
+                "location or "
                 "with a "
              << endl;
         cout << " strange filename. Bailing ... " << endl;
@@ -99,7 +143,8 @@ void writePPM(const string& filename, int& xRes, int& yRes,
     if (fp == NULL) {
         cout << " Could not open file \"" << filename.c_str()
              << "\" for writing." << endl;
-        cout << " Make sure you're not trying to write from a weird location "
+        cout << " Make sure you're not trying to write from a weird "
+                "location "
                 "or with a "
              << endl;
         cout << " strange filename. Bailing ... " << endl;
@@ -124,26 +169,71 @@ int main(int argc, char** argv) {
     Real fovy = 65;
     Camera cam = Camera(eye, lookAt, up, xRes, yRes, distanceToNearPlane, fovy);
 
+    // scene geometry
+    vector<Shape*> scene;
+    Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
+    Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
+    Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
+    scene.push_back(&one);
+    scene.push_back(&two);
+    scene.push_back(&three);
+
+    // allocate image
     float* ppm = allocatePPM(xRes, yRes);
 
     for (int i = 0; i < xRes; i++) {
         for (int j = 0; j < yRes; j++) {
-            Ray r = rayGeneration(i, j, cam);
-            VEC3 normalizedDirection = r.direction / r.direction.norm();
-            int index = indexIntoPPM(i, j, xRes, yRes, true);
-            ppm[index] = abs(normalizedDirection[0] * 255);
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+
+            // pixel color is from intersecting scene
+            VEC3 color = rayColor(scene, ray);
+            int index = indexIntoPPM(i, j, xRes, yRes, false);
+            ppm[index] = color[0] * 255;
+            ppm[index + 1] = color[1] * 255;
+            ppm[index + 2] = color[2] * 255;
+
+            // part 1.1
+            // VEC3 normalizedDirection = r.direction / r.direction.norm();
+            // int index = indexIntoPPM(i, j, xRes, yRes, false);
+            // ppm[index] = (normalizedDirection[0] * 255);
+
             // ppm[index + 1] = 0;
             // ppm[index + 2] = 0;
-            // cout << r << endl;
+            // cout << r << end;
         }
     }
 
+    // write out to image
     writePPM("test.ppm", xRes, yRes, ppm);
+}
+
+VEC3 rayColor(vector<Shape*> scene, Ray ray) {
+    if (intersectScene(scene, ray) == false) {
+        return VEC3(0.0, 0.0, 0.0);  // black
+    } else {
+        return VEC3(1.0, 0.0, 0.0);  // red
+    }
+}
+
+bool intersectScene(vector<Shape*> scene, Ray ray) {
+    // for each primitive in the scene
+    bool any = false;
+    for (int i = 0; i < scene.size(); i++) {
+        // check intersection
+        bool result = scene[i]->intersect(ray);
+        if (result) {
+            any = true;
+            break;
+        }
+    }
+    return any;
 }
 
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     // construct an eye coordinate frame
-    // TODO: felicia says she used squaredNorm, but it doesn't make a difference
+    // TODO: felicia says she used squaredNorm, but it doesn't make a
+    // difference
     VEC3 gaze = cam.lookAt - cam.eye;
     VEC3 W = -gaze / gaze.norm();
     VEC3 upCrossW = cam.up.cross(W);
@@ -162,7 +252,8 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     VEC3 topRight =
         center + (U * (rasterWidth / 2.0)) + (V * (rasterHeight / 2.0));
 
-    // assert that the z-coordinates of everything are the same (they should be)
+    // assert that the z-coordinates of everything are the same (they should
+    // be)
     assert((bottomLeft[2] == bottomRight[2]) &&
            (bottomLeft[2] == topRight[2]) && (bottomRight[2] == topRight[2]));
     // assert that the plane is, in fact, a plane (paranoia)
@@ -174,7 +265,8 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     Real bottom = bottomRight[1];
     Real left = bottomLeft[0];
 
-    // cout << "T, R, B, L: " << top << ", " << right << ", " << bottom << ", "
+    // cout << "T, R, B, L: " << top << ", " << right << ", " << bottom <<
+    // ", "
     //      << left << "]" << endl;
 
     // assert that the bounds found this way match up with another way
@@ -195,14 +287,16 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     Real v_raster =
         bottom + (((top - bottom) * ((Real)pixel_j + 0.5)) / (Real)cam.yRes);
 
-    // go from orthographic raster coordinates to perspective raster coordinates
+    // go from orthographic raster coordinates to perspective raster
+    // coordinates
     Ray generate;
     generate.direction =
         (-cam.distanceToPlane * W) + (u_raster * U) + (v_raster * V);
     generate.origin = cam.eye;
 
     // cout << "[Origin: "
-    //      << "(" << generate.origin[0] << ", " << generate.origin[1] << ", "
+    //      << "(" << generate.origin[0] << ", " << generate.origin[1] << ",
+    //      "
     //      << generate.origin[2] << "), ";
 
     // cout << "Direction: "

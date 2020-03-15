@@ -16,9 +16,9 @@
             "name": "(lldb) Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/hw3/run",
+            "program": "${workspaceFolder}/hw4/run",
             // "args": ["bunny.ppm"],
-            "cwd": "${workspaceFolder}/hw3"
+            "cwd": "${workspaceFolder}/hw4"
         }
     ]
 }
