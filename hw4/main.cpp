@@ -14,14 +14,16 @@ class Camera;
 class Ray;
 class Shape;
 class Sphere;
+class IntersectResult;
 Real degreesToRadians(Real degrees);
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
 float* allocatePPM(int xRes, int yRes);
 void initPPM(float* values, int xRes, int yRes);
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
-bool intersectScene(vector<Shape*> scene, Ray ray);
+Shape* intersectScene(vector<Shape*> scene, Ray ray);
 VEC3 rayColor(vector<Shape*> scene, Ray ray);
+void part_1_1(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -52,6 +54,15 @@ class Ray {
     VEC3 direction;
 };
 
+class IntersectResult {
+   public:
+    Real t;
+    bool doesIntersect;
+
+    IntersectResult(Real t, bool doesIntersect)
+        : t(t), doesIntersect(doesIntersect) {}
+};
+
 ostream& operator<<(ostream& out, const Ray& r) {
     out << "[Origin: " << r.origin << ", Direction: " << r.direction << "]";
 }
@@ -59,19 +70,23 @@ ostream& operator<<(ostream& out, const Ray& r) {
 // shape class
 class Shape {
    public:
-    virtual bool intersect(Ray ray) = 0;
+    virtual IntersectResult intersect(Ray ray) = 0;
+    VEC3 color;
+
+    // base constructor
+    Shape(VEC3 color) : color(color) {}
 };
 
 class Sphere : public Shape {
    public:
     Real radius;
     VEC3 center;
-    VEC3 color;
 
+    // call the sphere constructor and the base constructor
     Sphere(Real radius, VEC3 center, VEC3 color)
-        : radius(radius), center(center), color(color) {}
+        : radius(radius), center(center), Shape(color) {}
 
-    bool intersect(Ray ray) {
+    IntersectResult intersect(Ray ray) {
         Real A = ray.direction.dot(ray.direction);
         Real B = (2 * ray.direction).dot(ray.origin - center);
         Real C =
@@ -80,18 +95,13 @@ class Sphere : public Shape {
         Real discriminant = (B * B) - (4 * A * C);
 
         if (discriminant < 0.0) {
-            return false;
+            return IntersectResult(0.0, false);
         } else {
-            return true;
+            // return the smallest value of t
+            Real t1 = -B + sqrt(discriminant);
+            Real t2 = -B - sqrt(discriminant);
+            return IntersectResult(std::min(t1, t2), true);
         }
-        // } else if (abs(discriminant) <
-        // std::numeric_limits<double>::epsilon()) {
-        //     // tangent to the surface
-        //     return true;
-        // } else if (discriminant > 0.0) {
-        //     // enters and exits surface
-        //     return true;
-        // }
     }
 };
 
@@ -157,8 +167,41 @@ void writePPM(const string& filename, int& xRes, int& yRes,
     delete[] pixels;
 }
 
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
+void part_1_1(Camera cam, vector<Shape*> scene) {
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
+            ppm[index] = std::min(0.0, ray.direction[0]) * 255;
+            ppm[index + 1] = 0.0;
+            ppm[index + 2] = 0.0;
+        }
+    }
+    // write out to image
+    writePPM("1x.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+
+    // create a ray map
+    ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // VEC3 normalizedDirection = r.direction / r.direction.norm();
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
+            ppm[index] = abs(ray.direction[0]) * 255;
+            ppm[index + 1] = 0.0;
+            ppm[index + 2] = 0.0;
+        }
+    }
+    // write out to image
+    writePPM("1xabs.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
 int main(int argc, char** argv) {
     int xRes = 800;
     int yRes = 600;
@@ -173,10 +216,17 @@ int main(int argc, char** argv) {
     vector<Shape*> scene;
     Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
     Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
-    Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
+
+    // Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5,
+    // 0.5));
     scene.push_back(&one);
     scene.push_back(&two);
-    scene.push_back(&three);
+
+    // scene.push_back(&three);
+
+    part_1_1(cam, scene);
+
+    return 0;
 
     // allocate image
     float* ppm = allocatePPM(xRes, yRes);
@@ -209,25 +259,30 @@ int main(int argc, char** argv) {
 }
 
 VEC3 rayColor(vector<Shape*> scene, Ray ray) {
-    if (intersectScene(scene, ray) == false) {
+    Shape* shape = intersectScene(scene, ray);
+    if (shape == NULL) {
         return VEC3(0.0, 0.0, 0.0);  // black
     } else {
-        return VEC3(1.0, 0.0, 0.0);  // red
+        return shape->color;  // red
     }
 }
 
-bool intersectScene(vector<Shape*> scene, Ray ray) {
+Shape* intersectScene(vector<Shape*> scene, Ray ray) {
     // for each primitive in the scene
-    bool any = false;
+    // keep track of the closest hit
+    Real closestT = std::numeric_limits<double>::infinity();
+    Shape* closestShape = NULL;
     for (int i = 0; i < scene.size(); i++) {
         // check intersection
-        bool result = scene[i]->intersect(ray);
-        if (result) {
-            any = true;
-            break;
+        IntersectResult result = scene[i]->intersect(ray);
+        if (result.doesIntersect) {
+            if (result.t < closestT) {
+                closestT = result.t;
+                closestShape = scene[i];
+            }
         }
     }
-    return any;
+    return closestShape;
 }
 
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
