@@ -21,9 +21,11 @@ float* allocatePPM(int xRes, int yRes);
 void initPPM(float* values, int xRes, int yRes);
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
+void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
 Shape* intersectScene(vector<Shape*> scene, Ray ray);
 VEC3 rayColor(vector<Shape*> scene, Ray ray);
 void part_1_1(Camera cam, vector<Shape*> scene);
+void part_1_2(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -88,18 +90,17 @@ class Sphere : public Shape {
 
     IntersectResult intersect(Ray ray) {
         Real A = ray.direction.dot(ray.direction);
-        Real B = (2 * ray.direction).dot(ray.origin - center);
+        Real B = (2.0 * ray.direction).dot(ray.origin - center);
         Real C =
             (ray.origin - center).dot(ray.origin - center) - (radius * radius);
 
-        Real discriminant = (B * B) - (4 * A * C);
+        Real discriminant = (B * B) - (4.0 * A * C);
 
         if (discriminant < 0.0) {
             return IntersectResult(0.0, false);
         } else {
-            // return the smallest value of t
-            Real t1 = -B + sqrt(discriminant);
-            Real t2 = -B - sqrt(discriminant);
+            Real t1 = (-B + sqrt(discriminant)) / (2.0 * A);
+            Real t2 = (-B - sqrt(discriminant)) / (2.0 * A);
             return IntersectResult(std::min(t1, t2), true);
         }
     }
@@ -175,9 +176,7 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
-            ppm[index] = std::min(0.0, ray.direction[0]) * 255;
-            ppm[index + 1] = 0.0;
-            ppm[index + 2] = 0.0;
+            writeColorToPPM(VEC3(ray.direction[0], 0.0, 0.0), ppm, index);
         }
     }
     // write out to image
@@ -190,15 +189,33 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
         for (int j = 0; j < cam.yRes; j++) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
-            // VEC3 normalizedDirection = r.direction / r.direction.norm();
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
-            ppm[index] = abs(ray.direction[0]) * 255;
-            ppm[index + 1] = 0.0;
-            ppm[index + 2] = 0.0;
+            writeColorToPPM(VEC3(abs(ray.direction[0]), 0.0, 0.0), ppm, index);
         }
     }
     // write out to image
     writePPM("1xabs.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
+void part_1_2(Camera cam, vector<Shape*> scene) {
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color = rayColor(scene, ray);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("1_2.ppm", cam.xRes, cam.yRes, ppm);
     delete[] ppm;
 }
 
@@ -215,47 +232,16 @@ int main(int argc, char** argv) {
     // scene geometry
     vector<Shape*> scene;
     Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
-    Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
-
-    // Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5,
-    // 0.5));
+    Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.0, 0.25, 1.0));
+    Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
     scene.push_back(&one);
     scene.push_back(&two);
-
-    // scene.push_back(&three);
+    scene.push_back(&three);
 
     part_1_1(cam, scene);
+    // part_1_2(cam, scene);
 
     return 0;
-
-    // allocate image
-    float* ppm = allocatePPM(xRes, yRes);
-
-    for (int i = 0; i < xRes; i++) {
-        for (int j = 0; j < yRes; j++) {
-            // generate the ray
-            Ray ray = rayGeneration(i, j, cam);
-
-            // pixel color is from intersecting scene
-            VEC3 color = rayColor(scene, ray);
-            int index = indexIntoPPM(i, j, xRes, yRes, false);
-            ppm[index] = color[0] * 255;
-            ppm[index + 1] = color[1] * 255;
-            ppm[index + 2] = color[2] * 255;
-
-            // part 1.1
-            // VEC3 normalizedDirection = r.direction / r.direction.norm();
-            // int index = indexIntoPPM(i, j, xRes, yRes, false);
-            // ppm[index] = (normalizedDirection[0] * 255);
-
-            // ppm[index + 1] = 0;
-            // ppm[index + 2] = 0;
-            // cout << r << end;
-        }
-    }
-
-    // write out to image
-    writePPM("test.ppm", xRes, yRes, ppm);
 }
 
 VEC3 rayColor(vector<Shape*> scene, Ray ray) {
@@ -270,7 +256,7 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray) {
 Shape* intersectScene(vector<Shape*> scene, Ray ray) {
     // for each primitive in the scene
     // keep track of the closest hit
-    Real closestT = std::numeric_limits<double>::infinity();
+    Real closestT = INFINITY;
     Shape* closestShape = NULL;
     for (int i = 0; i < scene.size(); i++) {
         // check intersection
@@ -395,4 +381,16 @@ int indexIntoPPM(int x, int y, int xRes, int yRes, bool originBottomLeft) {
     }
 
     return index;
+}
+
+void writeColorToPPM(VEC3 color, float* ppm, int startIndex) {
+    int index = startIndex;
+    for (int i = 0; i < 3; i++) {
+        if (color[i] < 0.0) {
+            ppm[index] = 0.0;
+        } else {
+            ppm[index] = color[i] * 255;
+        }
+        index++;
+    }
 }
