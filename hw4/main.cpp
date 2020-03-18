@@ -17,6 +17,7 @@ class Sphere;
 class IntersectResult;
 Real degreesToRadians(Real degrees);
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
+Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam);
 float* allocatePPM(int xRes, int yRes);
 void initPPM(float* values, int xRes, int yRes);
 int indexIntoPPM(int x, int y, int xRes, int yRes,
@@ -54,6 +55,8 @@ class Ray {
    public:
     VEC3 origin;
     VEC3 direction;
+
+    Ray(VEC3 origin, VEC3 direction) : origin(origin), direction(direction) {}
 };
 
 class IntersectResult {
@@ -174,7 +177,7 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
             // generate the ray
-            Ray ray = rayGeneration(i, j, cam);
+            Ray ray = rayGenerationAlt(i, j, cam);
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
             writeColorToPPM(VEC3(ray.direction[0], 0.0, 0.0), ppm, index);
         }
@@ -188,7 +191,7 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
             // generate the ray
-            Ray ray = rayGeneration(i, j, cam);
+            Ray ray = rayGenerationAlt(i, j, cam);
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
             writeColorToPPM(VEC3(abs(ray.direction[0]), 0.0, 0.0), ppm, index);
         }
@@ -232,14 +235,14 @@ int main(int argc, char** argv) {
     // scene geometry
     vector<Shape*> scene;
     Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
-    Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.0, 0.25, 1.0));
+    Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.25, 0.25, 1.0));
     Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
     scene.push_back(&one);
     scene.push_back(&two);
     scene.push_back(&three);
 
-    part_1_1(cam, scene);
-    // part_1_2(cam, scene);
+    // part_1_1(cam, scene);
+    part_1_2(cam, scene);
 
     return 0;
 }
@@ -269,6 +272,33 @@ Shape* intersectScene(vector<Shape*> scene, Ray ray) {
         }
     }
     return closestShape;
+}
+
+Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam) {
+    // known:
+    // camera: eye, look at, up
+    // image plane: distance to plane, fovy,
+    // aspect screen: pixel resolution
+
+    // construct coordinate frame
+    VEC3 gaze = cam.lookAt - cam.eye;
+    VEC3 W = gaze / gaze.norm();  // TODO: -gaze
+    VEC3 upCrossW = cam.up.cross(W);
+    VEC3 U = upCrossW / upCrossW.norm();
+    VEC3 V = W.cross(U);
+
+    // image plane setup
+    Real height =
+        tan(degreesToRadians(cam.fovy) / 2.0) * 2.0 * cam.distanceToPlane;
+    Real width = height * cam.aspect;
+    VEC3 C = cam.eye - (W * cam.distanceToPlane);
+    VEC3 L = C - (U * width / 2.0) - (V * height / 2.0);
+    VEC3 s = L + (U * ((Real)pixel_i) * width / ((Real)cam.xRes)) +
+             (V * ((Real)pixel_j) * height / ((Real)cam.yRes));
+
+    // return ray
+    Ray ray = Ray(cam.eye, s - cam.eye);
+    return ray;
 }
 
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
@@ -330,10 +360,8 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
 
     // go from orthographic raster coordinates to perspective raster
     // coordinates
-    Ray generate;
-    generate.direction =
-        (-cam.distanceToPlane * W) + (u_raster * U) + (v_raster * V);
-    generate.origin = cam.eye;
+    Ray generate = Ray(
+        cam.eye, (-cam.distanceToPlane * W) + (u_raster * U) + (v_raster * V));
 
     // cout << "[Origin: "
     //      << "(" << generate.origin[0] << ", " << generate.origin[1] << ",
