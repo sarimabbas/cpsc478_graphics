@@ -15,6 +15,7 @@ class Ray;
 class Shape;
 class Sphere;
 class IntersectResult;
+class Light;
 Real degreesToRadians(Real degrees);
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
 Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam);
@@ -24,9 +25,11 @@ int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
 void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
 Shape* intersectScene(vector<Shape*> scene, Ray ray);
-VEC3 rayColor(vector<Shape*> scene, Ray ray);
-void part_1_1(Camera cam, vector<Shape*> scene);
-void part_1_2(Camera cam, vector<Shape*> scene);
+VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
+              Real phongExponent = 10.0);
+void part_1(Camera cam, vector<Shape*> scene);
+void part_2(Camera cam, vector<Shape*> scene);
+void part_3(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -123,6 +126,14 @@ class Sphere : public Shape {
     }
 };
 
+class Light {
+   public:
+    VEC3 position;
+    VEC3 color;
+
+    Light(VEC3 position, VEC3 color) : position(position), color(color) {}
+};
+
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 void readPPM(const string& filename, int& xRes, int& yRes, float*& values) {
@@ -185,7 +196,7 @@ void writePPM(const string& filename, int& xRes, int& yRes,
     delete[] pixels;
 }
 
-void part_1_1(Camera cam, vector<Shape*> scene) {
+void part_1(Camera cam, vector<Shape*> scene) {
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
@@ -243,7 +254,9 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
-void part_1_2(Camera cam, vector<Shape*> scene) {
+void part_2(Camera cam, vector<Shape*> scene) {
+    // no lights
+    vector<Light*> lights;
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
@@ -251,7 +264,7 @@ void part_1_2(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(scene, ray);
+            VEC3 color = rayColor(scene, ray, lights);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -260,7 +273,36 @@ void part_1_2(Camera cam, vector<Shape*> scene) {
         }
     }
     // write out to image
-    writePPM("1_2.ppm", cam.xRes, cam.yRes, ppm);
+    writePPM("2.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
+void part_3(Camera cam, vector<Shape*> scene) {
+    // add lights
+    Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 3.0, 7.5), VEC3(0.5, 0.0, 0.0));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color = rayColor(scene, ray, lights, phongExponent);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("3.ppm", cam.xRes, cam.yRes, ppm);
     delete[] ppm;
 }
 
@@ -285,13 +327,15 @@ int main(int argc, char** argv) {
     scene.push_back(&three);
     // scene.push_back(&four);
 
-    // part_1_1(cam, scene);
-    part_1_2(cam, scene);
+    // part_1(cam, scene);
+    part_2(cam, scene);
+    // part_3(cam, scene);
 
     return 0;
 }
 
-VEC3 rayColor(vector<Shape*> scene, Ray ray) {
+VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
+              Real phongExponent) {
     Shape* shape = intersectScene(scene, ray);
     if (shape == NULL) {
         return VEC3(0.0, 0.0, 0.0);  // black
