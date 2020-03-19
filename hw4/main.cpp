@@ -234,16 +234,17 @@ void part_1_2(Camera cam, vector<Shape*> scene) {
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
-            if (i == 250 && j == 235) {
-                cout << "hello" << endl;
-            }
-
-            if (i == 250 && j == 428) {
-                cout << "hello" << endl;
-            }
-
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
+
+            // if (i == 400 && j == 50) {
+            //     cout << "hello" << endl;
+            // }
+
+            // if (i == 400 && j == 450) {
+            //     cout << "hello" << endl;
+            // }
+
             // do a scene intersection
             VEC3 color = rayColor(scene, ray);
             // color the pixel
@@ -310,33 +311,6 @@ Shape* intersectScene(vector<Shape*> scene, Ray ray) {
         }
     }
     return closestShape;
-}
-
-Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam) {
-    // known:
-    // camera: eye, look at, up
-    // image plane: distance to plane, fovy,
-    // aspect screen: pixel resolution
-
-    // construct coordinate frame
-    VEC3 gaze = cam.lookAt - cam.eye;
-    VEC3 W = gaze / gaze.norm();  // TODO: -gaze
-    VEC3 upCrossW = cam.up.cross(W);
-    VEC3 U = upCrossW / upCrossW.norm();
-    VEC3 V = W.cross(U);
-
-    // image plane setup
-    Real height =
-        tan(degreesToRadians(cam.fovy) / 2.0) * 2.0 * cam.distanceToPlane;
-    Real width = height * cam.aspect;
-    VEC3 C = cam.eye - (W * cam.distanceToPlane);
-    VEC3 L = C - (U * width / 2.0) - (V * height / 2.0);
-    VEC3 s = L + (U * ((Real)pixel_i) * width / ((Real)cam.xRes)) +
-             (V * ((Real)pixel_j) * height / ((Real)cam.yRes));
-
-    // return ray
-    Ray ray = Ray(cam.eye, s - cam.eye);
-    return ray;
 }
 
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
