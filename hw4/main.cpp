@@ -63,9 +63,15 @@ class IntersectResult {
    public:
     Real t;
     bool doesIntersect;
+    VEC3 normal;
 
-    IntersectResult(Real t, bool doesIntersect)
-        : t(t), doesIntersect(doesIntersect) {}
+    // default constructor
+    IntersectResult()
+        : t(0.0), doesIntersect(false), normal(VEC3(0.0, 0.0, 0.0)) {}
+
+    // named constructor
+    IntersectResult(Real t, bool doesIntersect, VEC3 normal)
+        : t(t), doesIntersect(doesIntersect), normal(normal) {}
 };
 
 ostream& operator<<(ostream& out, const Ray& r) {
@@ -100,11 +106,19 @@ class Sphere : public Shape {
         Real discriminant = (B * B) - (4.0 * A * C);
 
         if (discriminant < 0.0) {
-            return IntersectResult(0.0, false);
+            return IntersectResult();
         } else {
+            // compute intersection points
             Real t1 = (-B + sqrt(discriminant)) / (2.0 * A);
             Real t2 = (-B - sqrt(discriminant)) / (2.0 * A);
-            return IntersectResult(std::min(t1, t2), true);
+            Real closestT = std::min(t1, t2);
+
+            // compute normal for lighting
+            VEC3 intersectionPoint = ray.origin + (ray.direction * closestT);
+            VEC3 normal = (intersectionPoint - center) /
+                          (intersectionPoint - center).norm();
+
+            return IntersectResult(closestT, true, normal);
         }
     }
 };
@@ -236,15 +250,6 @@ void part_1_2(Camera cam, vector<Shape*> scene) {
         for (int j = 0; j < cam.yRes; j++) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
-
-            // if (i == 400 && j == 50) {
-            //     cout << "hello" << endl;
-            // }
-
-            // if (i == 400 && j == 450) {
-            //     cout << "hello" << endl;
-            // }
-
             // do a scene intersection
             VEC3 color = rayColor(scene, ray);
             // color the pixel
