@@ -177,8 +177,8 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
             // generate the ray
-            Ray ray = rayGenerationAlt(i, j, cam);
-            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
+            Ray ray = rayGeneration(i, j, cam);
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             writeColorToPPM(VEC3(ray.direction[0], 0.0, 0.0), ppm, index);
         }
     }
@@ -191,13 +191,41 @@ void part_1_1(Camera cam, vector<Shape*> scene) {
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
             // generate the ray
-            Ray ray = rayGenerationAlt(i, j, cam);
-            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
+            Ray ray = rayGeneration(i, j, cam);
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             writeColorToPPM(VEC3(abs(ray.direction[0]), 0.0, 0.0), ppm, index);
         }
     }
     // write out to image
     writePPM("1xabs.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+
+    // create a ray map
+    ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            writeColorToPPM(VEC3(0.0, ray.direction[1], 0.0), ppm, index);
+        }
+    }
+    // write out to image
+    writePPM("1y.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+
+    // create a ray map
+    ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            writeColorToPPM(VEC3(0.0, abs(ray.direction[1]), 0.0), ppm, index);
+        }
+    }
+    // write out to image
+    writePPM("1yabs.ppm", cam.xRes, cam.yRes, ppm);
     delete[] ppm;
 }
 
@@ -206,12 +234,20 @@ void part_1_2(Camera cam, vector<Shape*> scene) {
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
+            if (i == 250 && j == 235) {
+                cout << "hello" << endl;
+            }
+
+            if (i == 250 && j == 428) {
+                cout << "hello" << endl;
+            }
+
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray);
             // color the pixel
-            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, false);
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
             ppm[index + 1] = color[1] * 255.0;
             ppm[index + 2] = color[2] * 255.0;
@@ -236,10 +272,12 @@ int main(int argc, char** argv) {
     vector<Shape*> scene;
     Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
     Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.25, 0.25, 1.0));
+    // Sphere four = Sphere(5.0, VEC3(4.0, -1.0, 10.0), VEC3(0.25, 1.0, 0.25));
     Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
     scene.push_back(&one);
     scene.push_back(&two);
     scene.push_back(&three);
+    // scene.push_back(&four);
 
     // part_1_1(cam, scene);
     part_1_2(cam, scene);
@@ -264,8 +302,8 @@ Shape* intersectScene(vector<Shape*> scene, Ray ray) {
     for (int i = 0; i < scene.size(); i++) {
         // check intersection
         IntersectResult result = scene[i]->intersect(ray);
-        if (result.doesIntersect) {
-            if (result.t < closestT) {
+        if (result.doesIntersect == true) {
+            if (result.t >= 0.0 && result.t < closestT) {
                 closestT = result.t;
                 closestShape = scene[i];
             }
