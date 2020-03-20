@@ -26,10 +26,10 @@ int indexIntoPPM(int x, int y, int xRes, int yRes,
 void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
 IntersectResult intersectScene(vector<Shape*> scene, Ray ray);
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
-              Real phongExponent);
-VEC3 lightingEquation(vector<Light*> lights, IntersectResult intersection,
-                      Real phongExponent, Ray ray, bool useSpecular,
-                      bool multipleLights);
+              Real phongExponent, bool useLights, bool useMultipleLights,
+              bool useSpecular);
+VEC3 lightingEquation(Light* light, IntersectResult intersection,
+                      Real phongExponent, Ray ray, bool useSpecular);
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
 void part_3(Camera cam, vector<Shape*> scene);
@@ -279,7 +279,8 @@ void part_2(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(scene, ray, lights, 10.0);
+            VEC3 color =
+                rayColor(scene, ray, lights, 10.0, false, false, false);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -300,6 +301,9 @@ void part_3(Camera cam, vector<Shape*> scene) {
     lights.push_back(&one);
     lights.push_back(&two);
     Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = false;
+    bool useSpecular = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -308,7 +312,8 @@ void part_3(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(scene, ray, lights, phongExponent);
+            VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
+                                  useMultipleLights, useSpecular);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -348,62 +353,67 @@ int main(int argc, char** argv) {
 }
 
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
-              Real phongExponent) {
+              Real phongExponent, bool useLights, bool useMultipleLights,
+              bool useSpecular) {
+    // do an intersection with the scene
     IntersectResult intersection = intersectScene(scene, ray);
+
+    // no intersection (return black)
     if (intersection.intersectingShape == NULL) {
         return VEC3(0.0, 0.0, 0.0);  // black
-    } else {
-        // start with black
-        VEC3 color = VEC3(0.0, 0.0, 0.0);
-
-        //
-
-        // 3 terms lighting equation
-        // if (lights.size() > 0) {
-        // }
-
-        return intersection.intersectingShape->color;  // red
     }
+
+    // shading with lights
+    if (useLights) {
+        VEC3 color = VEC3(0.0, 0.0, 0.0);
+        for (int i = 0; i < lights.size(); i++) {
+            color += lightingEquation(lights[i], intersection, phongExponent,
+                                      ray, useSpecular);
+            if (!useMultipleLights) {
+                break;
+            }
+        }
+        return color;
+    }
+    return intersection.intersectingShape->color;
 }
 
-VEC3 lightingEquation(vector<Light*> lights, IntersectResult intersection,
-                      Real phongExponent, Ray ray, bool useSpecular,
-                      bool multipleLights) {
-    for (int i = 0; i < lights.size(); i++) {
-        // calculate L vec from the intersectionPoint and the light position
-        VEC3 L = (lights[i]->position - intersection.intersectionPoint) /
-                 (lights[i]->position - intersection.intersectionPoint).norm();
-        // calculate e from the intersectionPoint and eye position
-        VEC3 E = (ray.origin - intersection.intersectionPoint) /
-                 (ray.origin - intersection.intersectionPoint).norm();
-        // calculate the r vector from the dot product of L and normal
-        VEC3 R = -L + (2 * L.dot(intersection.normal) * intersection.normal);
+VEC3 lightingEquation(Light* light, IntersectResult intersection,
+                      Real phongExponent, Ray ray, bool useSpecular) {
+    // * calculate the three vectors
+    // calculate L vec from the intersectionPoint and the light position
+    VEC3 L = (light->position - intersection.intersectionPoint) /
+             (light->position - intersection.intersectionPoint).norm();
+    // calculate e from the intersectionPoint and eye position
+    VEC3 E = (ray.origin - intersection.intersectionPoint) /
+             (ray.origin - intersection.intersectionPoint).norm();
+    // calculate the r vector from the dot product of L and normal
+    VEC3 R = -L + (2 * L.dot(intersection.normal) * intersection.normal);
 
-        /// calculate the three components
-        // ambient
-        VEC3 ambientColor = VEC3(0.0, 0.0, 0.0);  // TODO: what's this?
-        Real ambientIntensity = 1.0;              // TODO: what's this?
-        VEC3 ambientComponent = ambientColor * ambientIntensity;
-        // diffuse
-        VEC3 diffuseComponent =
-            lights[i]->color * std::max(0.0, intersection.normal.dot(L));
-        // specular // TODO: apply phong exponent, but where?
-        VEC3 specularComponent = lights[i]->color * std::max(0.0, R.dot(E));
+    // * calculate the three components
+    // ambient
+    VEC3 ambientColor = VEC3(0.0, 0.0, 0.0);  // TODO: what's this?
+    Real ambientIntensity = 1.0;              // TODO: what's this?
+    VEC3 ambientComponent = ambientColor * ambientIntensity;
+    // diffuse
+    VEC3 diffuseComponent =
+        light->color * std::max(0.0, intersection.normal.dot(L));
+    // specular // TODO: apply phong exponent, but where?
+    VEC3 specularComponent = light->color * std::max(0.0, R.dot(E));
 
-        // assemble the final color
-        VEC3 finalColor;
-        if (useSpecular) {
-            // full shading for part 5.png
-            finalColor = (intersection.intersectingShape->color)
-                             .cwiseProduct(ambientComponent + diffuseComponent +
-                                           specularComponent);
-        } else {
-            // diffuse shading for part 3.png
-            finalColor = (intersection.intersectingShape->color)
-                             .cwiseProduct(ambientComponent + diffuseComponent);
-        }
-        return finalColor;
+    // * assemble the final color
+    VEC3 finalColor;
+    if (useSpecular) {
+        // full shading for part 5.png
+        finalColor = (intersection.intersectingShape->color)
+                         .cwiseProduct(ambientComponent + diffuseComponent +
+                                       specularComponent);
+    } else {
+        // diffuse shading for part 3.png
+        finalColor = (intersection.intersectingShape->color)
+                         .cwiseProduct(ambientComponent + diffuseComponent);
     }
+    return finalColor;
 }
 
 IntersectResult intersectScene(vector<Shape*> scene, Ray ray) {
