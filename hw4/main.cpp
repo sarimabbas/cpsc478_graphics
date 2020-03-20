@@ -30,6 +30,8 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               bool useSpecular);
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular);
+Real clamp(Real x, Real lower, Real upper);
+VEC3 clampVec3(VEC3 vec, Real low, Real high);
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
 void part_3(Camera cam, vector<Shape*> scene);
@@ -298,10 +300,10 @@ void part_2(Camera cam, vector<Shape*> scene) {
 void part_3(Camera cam, vector<Shape*> scene) {
     // add lights
     Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
-    // Light two = Light(VEC3(-10.0, 3.0, 7.5), VEC3(0.5, 0.0, 0.0));
+    Light two = Light(VEC3(-10.0, 3.0, 7.5), VEC3(0.5, 0.0, 0.0));
     vector<Light*> lights;
     lights.push_back(&one);
-    // lights.push_back(&two);
+    lights.push_back(&two);
     Real phongExponent = 10.0;
     bool useLights = true;
     bool useMultipleLights = false;
@@ -370,7 +372,7 @@ void part_5(Camera cam, vector<Shape*> scene) {
     lights.push_back(&two);
     Real phongExponent = 10.0;
     bool useLights = true;
-    bool useMultipleLights = false;
+    bool useMultipleLights = true;
     bool useSpecular = true;
 
     // create a ray map
@@ -445,7 +447,9 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
                 break;
             }
         }
-        return color;
+        // TODO: is this required?
+        return clampVec3(color, 0.0, 1.0);
+        // return color;
     }
     return intersection.intersectingShape->color;
 }
@@ -456,9 +460,14 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     // calculate L vec from the intersectionPoint and the light position
     VEC3 L = (light->position - intersection.intersectionPoint);
     L /= L.norm();
-    // calculate e from the intersectionPoint and eye position
-    VEC3 E = (ray.origin - intersection.intersectionPoint);
-    E /= E.norm();
+    // calculate V from the intersectionPoint and eye position
+    VEC3 V = (ray.origin - intersection.intersectionPoint);
+    V /= V.norm();
+
+    // calculate H
+    // VEC3 H = V + L;
+    // H /= H.norm();
+
     // calculate the r vector from the dot product of L and normal
     VEC3 R = -L + (2 * L.dot(intersection.normal) * intersection.normal);
     R /= R.norm();
@@ -469,28 +478,25 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     Real ambientIntensity = 1.0;              // TODO: what's this?
     VEC3 ambientComponent = ambientColor * ambientIntensity;
     // diffuse
-    VEC3 diffuseComponent =
-        light->color * std::max(0.0, intersection.normal.dot(L));
+    VEC3 diffuseComponent = intersection.intersectingShape->color.cwiseProduct(
+        light->color * std::max(0.0, intersection.normal.dot(L)));
+    // diffuseComponent = clampVec3(diffuseComponent, 0.0, 1.0);
+
     // specular // TODO: apply phong exponent, but where?
-    VEC3 specularComponent =
-        light->color * pow(std::max(0.0, R.dot(E)), phongExponent);
-    // specularComponent[0] = pow(specularComponent[0], phongExponent);
-    // specularComponent[1] = pow(specularComponent[1], phongExponent);
-    // specularComponent[2] = pow(specularComponent[2], phongExponent);
+    VEC3 specularComponent = intersection.intersectingShape->color.cwiseProduct(
+        light->color * pow(std::max(0.0, R.dot(V)), phongExponent));
+    // specularComponent = clampVec3(specularComponent, 0.0, 1.0);
 
     // * assemble the final color
     VEC3 finalColor;
     if (useSpecular) {
         // full shading for part 5.png
-        finalColor = (intersection.intersectingShape->color)
-                         .cwiseProduct(ambientComponent + diffuseComponent +
-                                       specularComponent);
+        finalColor = ambientComponent + diffuseComponent + specularComponent;
     } else {
         // diffuse shading for part 3.png
-        finalColor = (intersection.intersectingShape->color)
-                         .cwiseProduct(ambientComponent + diffuseComponent);
+        finalColor = ambientComponent + diffuseComponent;
     }
-    return finalColor;
+    return clampVec3(finalColor, 0.0, 1.0);
 }
 
 IntersectResult intersectScene(vector<Shape*> scene, Ray ray) {
@@ -589,6 +595,18 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
 }
 
 Real degreesToRadians(Real degrees) { return (degrees)*M_PI / 180.0; }
+
+VEC3 clampVec3(VEC3 vec, Real low, Real high) {
+    VEC3 copy = vec;
+    for (int i = 0; i < 3; i++) {
+        copy[i] = clamp(copy[i], low, high);
+    }
+    return copy;
+}
+
+Real clamp(Real x, Real lower, Real upper) {
+    return std::min(upper, std::max(x, lower));
+}
 
 float* allocatePPM(int xRes, int yRes) {
     float* values = new float[3 * xRes * yRes];
