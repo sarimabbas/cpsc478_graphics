@@ -223,6 +223,7 @@ void writePPM(const string& filename, int& xRes, int& yRes,
     delete[] pixels;
 }
 
+// * ray generation maps
 void part_1(Camera cam, vector<Shape*> scene) {
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -281,6 +282,7 @@ void part_1(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * intersection of scene
 void part_2(Camera cam, vector<Shape*> scene) {
     // no lights
     vector<Light*> lights;
@@ -305,6 +307,7 @@ void part_2(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * diffuse shading
 void part_3(Camera cam, vector<Shape*> scene) {
     // add lights
     Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
@@ -339,6 +342,7 @@ void part_3(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * multiple lights
 void part_4(Camera cam, vector<Shape*> scene) {
     // add lights
     Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
@@ -373,6 +377,7 @@ void part_4(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * specular reflections
 void part_5(Camera cam, vector<Shape*> scene) {
     // add lights
     Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
@@ -407,6 +412,7 @@ void part_5(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * shadows
 void part_6(Camera cam, vector<Shape*> scene) {
     // add lights
     Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
@@ -441,6 +447,42 @@ void part_6(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * mirror reflections
+void part_7(Camera cam, vector<Shape*> scene) {
+    // add lights
+    Light one = Light(VEC3(10.0, 10.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 10.0, 7.5), VEC3(0.5, 0.25, 0.25));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = true;
+    bool useSpecular = true;
+    bool useShadows = true;
+    bool useMirror = true;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
+                                  useMultipleLights, useSpecular, useShadows);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("7.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
 int main(int argc, char** argv) {
     int xRes = 800;
     int yRes = 600;
@@ -468,7 +510,8 @@ int main(int argc, char** argv) {
     // part_3(cam, scene);
     // part_4(cam, scene);
     // part_5(cam, scene);
-    part_6(cam, scene);
+    // part_6(cam, scene);
+    part_7(cam, scene);
 
     return 0;
 }
