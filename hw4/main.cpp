@@ -367,8 +367,10 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
     if (useLights) {
         VEC3 color = VEC3(0.0, 0.0, 0.0);
         for (int i = 0; i < lights.size(); i++) {
+            // superpose the color from each light
             color += lightingEquation(lights[i], intersection, phongExponent,
                                       ray, useSpecular);
+            // only use the first light if flag not set
             if (!useMultipleLights) {
                 break;
             }
