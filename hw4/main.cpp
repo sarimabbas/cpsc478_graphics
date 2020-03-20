@@ -24,9 +24,12 @@ void initPPM(float* values, int xRes, int yRes);
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
 void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
-Shape* intersectScene(vector<Shape*> scene, Ray ray);
+IntersectResult intersectScene(vector<Shape*> scene, Ray ray);
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
-              Real phongExponent = 10.0);
+              Real phongExponent);
+VEC3 lightingEquation(vector<Light*> lights, IntersectResult intersection,
+                      Real phongExponent, Ray ray, bool useSpecular,
+                      bool multipleLights);
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
 void part_3(Camera cam, vector<Shape*> scene);
@@ -67,14 +70,25 @@ class IntersectResult {
     Real t;
     bool doesIntersect;
     VEC3 normal;
+    VEC3 intersectionPoint;
+    Shape* intersectingShape;
 
     // default constructor
     IntersectResult()
-        : t(0.0), doesIntersect(false), normal(VEC3(0.0, 0.0, 0.0)) {}
+        : t(0.0),
+          doesIntersect(false),
+          normal(VEC3(0.0, 0.0, 0.0)),
+          intersectionPoint(VEC3(0.0, 0.0, 0.0)),
+          intersectingShape(NULL) {}
 
     // named constructor
-    IntersectResult(Real t, bool doesIntersect, VEC3 normal)
-        : t(t), doesIntersect(doesIntersect), normal(normal) {}
+    IntersectResult(Real t, bool doesIntersect, VEC3 normal,
+                    VEC3 intersectionPoint, Shape* intersectingShape)
+        : t(t),
+          doesIntersect(doesIntersect),
+          normal(normal),
+          intersectionPoint(intersectionPoint),
+          intersectingShape(intersectingShape) {}
 };
 
 ostream& operator<<(ostream& out, const Ray& r) {
@@ -121,7 +135,8 @@ class Sphere : public Shape {
             VEC3 normal = (intersectionPoint - center) /
                           (intersectionPoint - center).norm();
 
-            return IntersectResult(closestT, true, normal);
+            return IntersectResult(closestT, true, normal, intersectionPoint,
+                                   this);
         }
     }
 };
@@ -264,7 +279,7 @@ void part_2(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(scene, ray, lights);
+            VEC3 color = rayColor(scene, ray, lights, 10.0);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -284,7 +299,7 @@ void part_3(Camera cam, vector<Shape*> scene) {
     vector<Light*> lights;
     lights.push_back(&one);
     lights.push_back(&two);
-    Real phongExponent = 10;
+    Real phongExponent = 10.0;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -320,46 +335,96 @@ int main(int argc, char** argv) {
     vector<Shape*> scene;
     Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
     Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.25, 0.25, 1.0));
-    // Sphere four = Sphere(5.0, VEC3(4.0, -1.0, 10.0), VEC3(0.25, 1.0, 0.25));
     Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
     scene.push_back(&one);
     scene.push_back(&two);
     scene.push_back(&three);
-    // scene.push_back(&four);
 
     // part_1(cam, scene);
-    part_2(cam, scene);
-    // part_3(cam, scene);
+    // part_2(cam, scene);
+    part_3(cam, scene);
 
     return 0;
 }
 
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent) {
-    Shape* shape = intersectScene(scene, ray);
-    if (shape == NULL) {
+    IntersectResult intersection = intersectScene(scene, ray);
+    if (intersection.intersectingShape == NULL) {
         return VEC3(0.0, 0.0, 0.0);  // black
     } else {
-        return shape->color;  // red
+        // start with black
+        VEC3 color = VEC3(0.0, 0.0, 0.0);
+
+        //
+
+        // 3 terms lighting equation
+        // if (lights.size() > 0) {
+        // }
+
+        return intersection.intersectingShape->color;  // red
     }
 }
 
-Shape* intersectScene(vector<Shape*> scene, Ray ray) {
+VEC3 lightingEquation(vector<Light*> lights, IntersectResult intersection,
+                      Real phongExponent, Ray ray, bool useSpecular,
+                      bool multipleLights) {
+    for (int i = 0; i < lights.size(); i++) {
+        // calculate L vec from the intersectionPoint and the light position
+        VEC3 L = (lights[i]->position - intersection.intersectionPoint) /
+                 (lights[i]->position - intersection.intersectionPoint).norm();
+        // calculate e from the intersectionPoint and eye position
+        VEC3 E = (ray.origin - intersection.intersectionPoint) /
+                 (ray.origin - intersection.intersectionPoint).norm();
+        // calculate the r vector from the dot product of L and normal
+        VEC3 R = -L + (2 * L.dot(intersection.normal) * intersection.normal);
+
+        /// calculate the three components
+        // ambient
+        VEC3 ambientColor = VEC3(0.0, 0.0, 0.0);  // TODO: what's this?
+        Real ambientIntensity = 1.0;              // TODO: what's this?
+        VEC3 ambientComponent = ambientColor * ambientIntensity;
+        // diffuse
+        VEC3 diffuseComponent =
+            lights[i]->color * std::max(0.0, intersection.normal.dot(L));
+        // specular // TODO: apply phong exponent, but where?
+        VEC3 specularComponent = lights[i]->color * std::max(0.0, R.dot(E));
+
+        // assemble the final color
+        VEC3 finalColor;
+        if (useSpecular) {
+            // full shading for part 5.png
+            finalColor = (intersection.intersectingShape->color)
+                             .cwiseProduct(ambientComponent + diffuseComponent +
+                                           specularComponent);
+        } else {
+            // diffuse shading for part 3.png
+            finalColor = (intersection.intersectingShape->color)
+                             .cwiseProduct(ambientComponent + diffuseComponent);
+        }
+        return finalColor;
+    }
+}
+
+IntersectResult intersectScene(vector<Shape*> scene, Ray ray) {
     // for each primitive in the scene
     // keep track of the closest hit
     Real closestT = INFINITY;
-    Shape* closestShape = NULL;
+    // Shape* closestShape = NULL;
+    IntersectResult closestValidIntersection = IntersectResult();
     for (int i = 0; i < scene.size(); i++) {
-        // check intersection
+        // get intersection result
         IntersectResult result = scene[i]->intersect(ray);
+        // if there was an intersection
         if (result.doesIntersect == true) {
+            // and the intersection had a positive t intersect
             if (result.t >= 0.0 && result.t < closestT) {
                 closestT = result.t;
-                closestShape = scene[i];
+                closestValidIntersection = result;
             }
         }
     }
-    return closestShape;
+    return closestValidIntersection;
 }
 
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
