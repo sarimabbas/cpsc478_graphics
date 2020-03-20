@@ -24,14 +24,17 @@ void initPPM(float* values, int xRes, int yRes);
 int indexIntoPPM(int x, int y, int xRes, int yRes,
                  bool originBottomLeft = false);
 void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
-IntersectResult intersectScene(vector<Shape*> scene, Ray ray);
+IntersectResult intersectScene(vector<Shape*> scene, Ray ray, Real tLow);
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
-              bool useSpecular);
+              bool useSpecular, bool useShadows);
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular);
 Real clamp(Real x, Real lower, Real upper);
 VEC3 clampVec3(VEC3 vec, Real low, Real high);
+bool isPointInShadow(vector<Shape*> scene, Light* light,
+                     IntersectResult intersection);
+
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
 void part_3(Camera cam, vector<Shape*> scene);
@@ -284,7 +287,7 @@ void part_2(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color =
-                rayColor(scene, ray, lights, 10.0, false, false, false);
+                rayColor(scene, ray, lights, 10.0, false, false, false, false);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -308,6 +311,7 @@ void part_3(Camera cam, vector<Shape*> scene) {
     bool useLights = true;
     bool useMultipleLights = false;
     bool useSpecular = false;
+    bool useShadows = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -317,7 +321,7 @@ void part_3(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular);
+                                  useMultipleLights, useSpecular, useShadows);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -341,6 +345,7 @@ void part_4(Camera cam, vector<Shape*> scene) {
     bool useLights = true;
     bool useMultipleLights = true;
     bool useSpecular = false;
+    bool useShadows = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -350,7 +355,7 @@ void part_4(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular);
+                                  useMultipleLights, useSpecular, useShadows);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -374,6 +379,7 @@ void part_5(Camera cam, vector<Shape*> scene) {
     bool useLights = true;
     bool useMultipleLights = true;
     bool useSpecular = true;
+    bool useShadows = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -383,7 +389,7 @@ void part_5(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular);
+                                  useMultipleLights, useSpecular, useShadows);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -393,6 +399,40 @@ void part_5(Camera cam, vector<Shape*> scene) {
     }
     // write out to image
     writePPM("5.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
+void part_6(Camera cam, vector<Shape*> scene) {
+    // add lights
+    Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 3.0, 7.5), VEC3(0.5, 0.0, 0.0));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = true;
+    bool useSpecular = true;
+    bool useShadows = true;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
+                                  useMultipleLights, useSpecular, useShadows);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("6.ppm", cam.xRes, cam.yRes, ppm);
     delete[] ppm;
 }
 
@@ -419,16 +459,17 @@ int main(int argc, char** argv) {
     // part_2(cam, scene);
     // part_3(cam, scene);
     // part_4(cam, scene);
-    part_5(cam, scene);
+    // part_5(cam, scene);
+    part_6(cam, scene);
 
     return 0;
 }
 
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
-              bool useSpecular) {
+              bool useSpecular, bool useShadows) {
     // do an intersection with the scene
-    IntersectResult intersection = intersectScene(scene, ray);
+    IntersectResult intersection = intersectScene(scene, ray, 0.0);
 
     // no intersection (return black)
     if (intersection.intersectingShape == NULL) {
@@ -438,8 +479,14 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
     // shading with lights
     if (useLights) {
         VEC3 color = VEC3(0.0, 0.0, 0.0);
+
+        // * shading
         for (int i = 0; i < lights.size(); i++) {
-            // superpose the color from each light
+            if (useShadows) {
+                if (isPointInShadow(scene, lights[i], intersection)) {
+                    continue;
+                }
+            }
             color += lightingEquation(lights[i], intersection, phongExponent,
                                       ray, useSpecular);
             // only use the first light if flag not set
@@ -447,11 +494,23 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
                 break;
             }
         }
+
         // TODO: is this required?
         return clampVec3(color, 0.0, 1.0);
-        // return color;
     }
     return intersection.intersectingShape->color;
+}
+
+bool isPointInShadow(vector<Shape*> scene, Light* light,
+                     IntersectResult intersection) {
+    VEC3 shadowDirection = (light->position - intersection.intersectionPoint);
+    shadowDirection /= shadowDirection.norm();
+    Ray shadowRay(intersection.intersectionPoint, shadowDirection);
+    IntersectResult shadowIntersect = intersectScene(
+        scene, shadowRay, 10000.0 * std::numeric_limits<Real>::epsilon());
+    if (shadowIntersect.doesIntersect) {
+        return true;
+    }
 }
 
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
@@ -499,7 +558,7 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     return clampVec3(finalColor, 0.0, 1.0);
 }
 
-IntersectResult intersectScene(vector<Shape*> scene, Ray ray) {
+IntersectResult intersectScene(vector<Shape*> scene, Ray ray, Real tLow) {
     // for each primitive in the scene
     // keep track of the closest hit
     Real closestT = INFINITY;
@@ -511,7 +570,7 @@ IntersectResult intersectScene(vector<Shape*> scene, Ray ray) {
         // if there was an intersection
         if (result.doesIntersect == true) {
             // and the intersection had a positive t intersect
-            if (result.t >= 0.0 && result.t < closestT) {
+            if (result.t >= tLow && result.t < closestT) {
                 closestT = result.t;
                 closestValidIntersection = result;
             }
