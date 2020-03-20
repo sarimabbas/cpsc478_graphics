@@ -35,12 +35,15 @@ VEC3 clampVec3(VEC3 vec, Real low, Real high);
 bool isPointInShadow(vector<Shape*> scene, Light* light,
                      IntersectResult intersection);
 Real CUSTOM_EPSILON = 10000.0 * std::numeric_limits<Real>::epsilon();
+enum Material { OPAQUE, MIRROR, DIELECTRIC };
 
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
 void part_3(Camera cam, vector<Shape*> scene);
 void part_4(Camera cam, vector<Shape*> scene);
 void part_5(Camera cam, vector<Shape*> scene);
+void part_6(Camera cam, vector<Shape*> scene);
+void part_7(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -108,9 +111,10 @@ class Shape {
    public:
     virtual IntersectResult intersect(Ray ray) = 0;
     VEC3 color;
+    Material type;
 
     // base constructor
-    Shape(VEC3 color) : color(color) {}
+    Shape(VEC3 color, Material type) : color(color), type(type) {}
 };
 
 class Sphere : public Shape {
@@ -119,8 +123,8 @@ class Sphere : public Shape {
     VEC3 center;
 
     // call the sphere constructor and the base constructor
-    Sphere(Real radius, VEC3 center, VEC3 color)
-        : radius(radius), center(center), Shape(color) {}
+    Sphere(Real radius, VEC3 center, VEC3 color, Material type)
+        : radius(radius), center(center), Shape(color, type) {}
 
     IntersectResult intersect(Ray ray) {
         Real A = ray.direction.dot(ray.direction);
@@ -449,9 +453,12 @@ int main(int argc, char** argv) {
 
     // scene geometry
     vector<Shape*> scene;
-    Sphere one = Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25));
-    Sphere two = Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.25, 0.25, 1.0));
-    Sphere three = Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5));
+    Sphere one =
+        Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25), OPAQUE);
+    Sphere two =
+        Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.25, 0.25, 1.0), OPAQUE);
+    Sphere three =
+        Sphere(997.0, VEC3(0.0, -1000.0, 10.0), VEC3(0.5, 0.5, 0.5), OPAQUE);
     scene.push_back(&one);
     scene.push_back(&two);
     scene.push_back(&three);
