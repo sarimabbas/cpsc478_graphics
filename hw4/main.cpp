@@ -34,6 +34,7 @@ Real clamp(Real x, Real lower, Real upper);
 VEC3 clampVec3(VEC3 vec, Real low, Real high);
 bool isPointInShadow(vector<Shape*> scene, Light* light,
                      IntersectResult intersection);
+Real CUSTOM_EPSILON = 10000.0 * std::numeric_limits<Real>::epsilon();
 
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
@@ -506,8 +507,8 @@ bool isPointInShadow(vector<Shape*> scene, Light* light,
     VEC3 shadowDirection = (light->position - intersection.intersectionPoint);
     shadowDirection /= shadowDirection.norm();
     Ray shadowRay(intersection.intersectionPoint, shadowDirection);
-    IntersectResult shadowIntersect = intersectScene(
-        scene, shadowRay, 10000.0 * std::numeric_limits<Real>::epsilon());
+    IntersectResult shadowIntersect =
+        intersectScene(scene, shadowRay, CUSTOM_EPSILON);
     if (shadowIntersect.doesIntersect) {
         return true;
     }
