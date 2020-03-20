@@ -370,7 +370,7 @@ void part_5(Camera cam, vector<Shape*> scene) {
     lights.push_back(&two);
     Real phongExponent = 10.0;
     bool useLights = true;
-    bool useMultipleLights = true;
+    bool useMultipleLights = false;
     bool useSpecular = true;
 
     // create a ray map
@@ -415,9 +415,9 @@ int main(int argc, char** argv) {
 
     // part_1(cam, scene);
     // part_2(cam, scene);
-    part_3(cam, scene);
+    // part_3(cam, scene);
     // part_4(cam, scene);
-    // part_5(cam, scene);
+    part_5(cam, scene);
 
     return 0;
 }
@@ -454,13 +454,14 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular) {
     // * calculate the three vectors
     // calculate L vec from the intersectionPoint and the light position
-    VEC3 L = (light->position - intersection.intersectionPoint) /
-             (light->position - intersection.intersectionPoint).norm();
+    VEC3 L = (light->position - intersection.intersectionPoint);
+    L /= L.norm();
     // calculate e from the intersectionPoint and eye position
-    VEC3 E = (ray.origin - intersection.intersectionPoint) /
-             (ray.origin - intersection.intersectionPoint).norm();
+    VEC3 E = (ray.origin - intersection.intersectionPoint);
+    E /= E.norm();
     // calculate the r vector from the dot product of L and normal
     VEC3 R = -L + (2 * L.dot(intersection.normal) * intersection.normal);
+    R /= R.norm();
 
     // * calculate the three components
     // ambient
@@ -473,6 +474,9 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     // specular // TODO: apply phong exponent, but where?
     VEC3 specularComponent =
         light->color * pow(std::max(0.0, R.dot(E)), phongExponent);
+    // specularComponent[0] = pow(specularComponent[0], phongExponent);
+    // specularComponent[1] = pow(specularComponent[1], phongExponent);
+    // specularComponent[2] = pow(specularComponent[2], phongExponent);
 
     // * assemble the final color
     VEC3 finalColor;
