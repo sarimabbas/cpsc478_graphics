@@ -33,6 +33,8 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
 void part_3(Camera cam, vector<Shape*> scene);
+void part_4(Camera cam, vector<Shape*> scene);
+void part_5(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -359,6 +361,39 @@ void part_4(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+void part_5(Camera cam, vector<Shape*> scene) {
+    // add lights
+    Light one = Light(VEC3(10.0, 3.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 3.0, 7.5), VEC3(0.5, 0.0, 0.0));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = true;
+    bool useSpecular = true;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
+                                  useMultipleLights, useSpecular);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("5.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
 int main(int argc, char** argv) {
     int xRes = 800;
     int yRes = 600;
@@ -381,7 +416,8 @@ int main(int argc, char** argv) {
     // part_1(cam, scene);
     // part_2(cam, scene);
     part_3(cam, scene);
-    part_4(cam, scene);
+    // part_4(cam, scene);
+    // part_5(cam, scene);
 
     return 0;
 }
@@ -435,7 +471,8 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     VEC3 diffuseComponent =
         light->color * std::max(0.0, intersection.normal.dot(L));
     // specular // TODO: apply phong exponent, but where?
-    VEC3 specularComponent = light->color * std::max(0.0, R.dot(E));
+    VEC3 specularComponent =
+        light->color * pow(std::max(0.0, R.dot(E)), phongExponent);
 
     // * assemble the final color
     VEC3 finalColor;
