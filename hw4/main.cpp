@@ -27,7 +27,8 @@ void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
 IntersectResult intersectScene(vector<Shape*> scene, Ray ray, Real tLow);
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
-              bool useSpecular, bool useShadows);
+              bool useSpecular, bool useShadows, bool useMirror,
+              int reflectionRecursionCounter);
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular);
 Real clamp(Real x, Real lower, Real upper);
@@ -36,6 +37,8 @@ bool isPointInShadow(vector<Shape*> scene, Light* light,
                      IntersectResult intersection);
 Real CUSTOM_EPSILON = 10000.0 * std::numeric_limits<Real>::epsilon();
 enum Material { OPAQUE, MIRROR, DIELECTRIC };
+int MIRROR_RECURSION_DEPTH = 10;
+Ray createReflectionRay(IntersectResult intersection, Ray ray);
 
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
@@ -293,8 +296,8 @@ void part_2(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color =
-                rayColor(scene, ray, lights, 10.0, false, false, false, false);
+            VEC3 color = rayColor(scene, ray, lights, 10.0, false, false, false,
+                                  false, false, 0);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -320,6 +323,8 @@ void part_3(Camera cam, vector<Shape*> scene) {
     bool useMultipleLights = false;
     bool useSpecular = false;
     bool useShadows = false;
+    bool useMirror = false;
+    int reflectionRecursionCounter = 0;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -329,7 +334,8 @@ void part_3(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular, useShadows);
+                                  useMultipleLights, useSpecular, useShadows,
+                                  useMirror, reflectionRecursionCounter);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -355,6 +361,8 @@ void part_4(Camera cam, vector<Shape*> scene) {
     bool useMultipleLights = true;
     bool useSpecular = false;
     bool useShadows = false;
+    bool useMirror = false;
+    int reflectionRecursionCounter = 0;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -364,7 +372,8 @@ void part_4(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular, useShadows);
+                                  useMultipleLights, useSpecular, useShadows,
+                                  useMirror, reflectionRecursionCounter);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -390,6 +399,8 @@ void part_5(Camera cam, vector<Shape*> scene) {
     bool useMultipleLights = true;
     bool useSpecular = true;
     bool useShadows = false;
+    bool useMirror = false;
+    int reflectionRecursionCounter = 0;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -399,7 +410,8 @@ void part_5(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular, useShadows);
+                                  useMultipleLights, useSpecular, useShadows,
+                                  useMirror, reflectionRecursionCounter);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -425,6 +437,8 @@ void part_6(Camera cam, vector<Shape*> scene) {
     bool useMultipleLights = true;
     bool useSpecular = true;
     bool useShadows = true;
+    bool useMirror = false;
+    int reflectionRecursionCounter = 0;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -434,7 +448,8 @@ void part_6(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular, useShadows);
+                                  useMultipleLights, useSpecular, useShadows,
+                                  useMirror, reflectionRecursionCounter);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -461,6 +476,7 @@ void part_7(Camera cam, vector<Shape*> scene) {
     bool useSpecular = true;
     bool useShadows = true;
     bool useMirror = true;
+    int reflectionRecursionCounter = 0;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -470,7 +486,8 @@ void part_7(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, phongExponent, useLights,
-                                  useMultipleLights, useSpecular, useShadows);
+                                  useMultipleLights, useSpecular, useShadows,
+                                  useMirror, reflectionRecursionCounter);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -496,7 +513,7 @@ int main(int argc, char** argv) {
     // scene geometry
     vector<Shape*> scene;
     Sphere one =
-        Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25), OPAQUE);
+        Sphere(3.0, VEC3(-3.5, 0.0, 10.0), VEC3(1.0, 0.25, 0.25), MIRROR);
     Sphere two =
         Sphere(3.0, VEC3(3.5, 0.0, 10.0), VEC3(0.25, 0.25, 1.0), OPAQUE);
     Sphere three =
@@ -518,16 +535,17 @@ int main(int argc, char** argv) {
 
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
-              bool useSpecular, bool useShadows) {
+              bool useSpecular, bool useShadows, bool useMirror,
+              int reflectionRecursionCounter) {
     // do an intersection with the scene
     IntersectResult intersection = intersectScene(scene, ray, 0.0);
 
     // no intersection (return black)
     if (intersection.intersectingShape == NULL) {
-        return VEC3(0.0, 0.0, 0.0);  // black
+        return VEC3(0.0, 0.0, 0.0);  // black background
     }
 
-    // shading with lights
+    // else if there is an intersection, do shading with lights
     if (useLights) {
         VEC3 color = VEC3(0.0, 0.0, 0.0);
 
@@ -538,6 +556,21 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
                     continue;
                 }
             }
+
+            if (useMirror) {
+                if (intersection.intersectingShape->type == MIRROR &&
+                    reflectionRecursionCounter != MIRROR_RECURSION_DEPTH) {
+                    Ray reflectionRay = createReflectionRay(intersection, ray);
+                    // call the reflection recursively
+                    VEC3 reflectionColor = rayColor(
+                        scene, reflectionRay, lights, phongExponent, useLights,
+                        useMultipleLights, useSpecular, useShadows, useMirror,
+                        reflectionRecursionCounter + 1);
+                    color += reflectionColor;
+                    // intersectScene(scene, reflectionRay, CUSTOM_EPSILON);
+                }
+            }
+
             color += lightingEquation(lights[i], intersection, phongExponent,
                                       ray, useSpecular);
             // only use the first light if flag not set
@@ -564,6 +597,18 @@ bool isPointInShadow(vector<Shape*> scene, Light* light,
     }
 }
 
+Ray createReflectionRay(IntersectResult intersection, Ray ray) {
+    // find the vector from intersection towards eye
+    VEC3 V = (ray.origin - intersection.intersectionPoint);
+    V /= V.norm();
+    // get the reflection direction
+    VEC3 R = -V + (2.0 * V.dot(intersection.normal) * intersection.normal);
+    R /= R.norm();
+    // generate ray
+    Ray reflectionRay(intersection.intersectionPoint, R);
+    return reflectionRay;
+}
+
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular) {
     // * calculate the three vectors
@@ -573,11 +618,6 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     // calculate V from the intersectionPoint and eye position
     VEC3 V = (ray.origin - intersection.intersectionPoint);
     V /= V.norm();
-
-    // calculate H
-    // VEC3 H = V + L;
-    // H /= H.norm();
-
     // calculate the r vector from the dot product of L and normal
     VEC3 R = -L + (2 * L.dot(intersection.normal) * intersection.normal);
     R /= R.norm();
