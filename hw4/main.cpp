@@ -557,8 +557,16 @@ void part_8(Camera cam, vector<Shape*> scene) {
     vector<Shape*> sceneCopy = scene;
     vector<Sphere> wallOfSpheres;
 
-    for (int i = -12; i < 0; i += 2) {
-        for (int j = -2; j < 4; j += 2) {
+    // for (int i = -12; i < 0; i += 2) {
+    //     for (int j = -2; j < 4; j += 2) {
+    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
+    //                                        0.0));
+    //     }
+    // }
+
+    for (int i = -20; i < 20; i += 2) {
+        for (int j = -2; j < 18; j += 2) {
             wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
                                            VEC3(1.0, 1.0, 1.0), OPAQUE, 0.0));
         }
@@ -569,9 +577,9 @@ void part_8(Camera cam, vector<Shape*> scene) {
     }
 
     // make the first sphere black, and glass
-    // sceneCopy[0]->color = VEC3(0.0, 0.0, 0.0);
-    // sceneCopy[0]->type = OPAQUE;
-    // sceneCopy[0]->refractiveIndex = REFRACT_GLASS;
+    sceneCopy[0]->color = VEC3(0.0, 0.0, 0.0);
+    sceneCopy[0]->type = DIELECTRIC;
+    sceneCopy[0]->refractiveIndex = REFRACT_GLASS;
 
     // add lights
     Light one = Light(VEC3(10.0, 10.0, 5.0), VEC3(1.0, 1.0, 1.0));
@@ -750,43 +758,38 @@ Ray createReflectionRay(IntersectResult intersection, Ray ray) {
 }
 
 Ray createRefractionRay(IntersectResult intersection, Ray ray, bool movingIn) {
-    VEC3 adjustedIntersectionPoint;
-    VEC3 normal = intersection.normal;
-    // if (movingIn) {
-    // adjust the point of intersection by moving the point into the shape
-    adjustedIntersectionPoint =
-        intersection.intersectionPoint - (10000 * CUSTOM_EPSILON * normal);
-    // } else {
-    //     adjustedIntersectionPoint =
-    //         intersection.intersectionPoint + (CUSTOM_EPSILON * normal);
-    // }
+    // normal
+    VEC3 N = intersection.normal;
 
-    // find the vector from eye towards intersection
-    VEC3 V = (adjustedIntersectionPoint - ray.origin);
-    V /= V.norm();
-    // snell law
-    Real n;
-    if (movingIn) {
-        n = REFRACT_AIR / intersection.intersectingShape->refractiveIndex;
+    // incidence
+    VEC3 I = (intersection.intersectionPoint - ray.origin);
+    I /= I.norm();
+
+    // reflection
+    VEC3 R = -I + (2.0 * I.dot(N) * N);
+    R /= R.norm();
+
+    Real cosi = clamp(-1.0, 1.0, I.dot(N));
+    Real etai = REFRACT_AIR;
+    Real etat = intersection.intersectingShape->refractiveIndex;
+    VEC3 n = N;
+    if (cosi < 0) {
+        cosi = -cosi;
     } else {
-        n = intersection.intersectingShape->refractiveIndex / REFRACT_AIR;
+        std::swap(etai, etat);
+        n = -N;
     }
+    Real eta = etai / etat;
+    Real k = 1.0 - eta * eta * (1.0 - cosi * cosi);
 
-    VEC3 one = n * (V - (normal * V.dot(normal)));
-    Real TTRCheck = 1.0 - pow(n, 2.0) * (1 - pow(V.dot(normal), 2.0));
-
-    if (TTRCheck < 0.0) {
-        // return reflected ray
-        VEC3 R = V + (2.0 * V.dot(normal) * normal);
-        R /= R.norm();
-        Ray reflectionRay(adjustedIntersectionPoint, R);
-        return reflectionRay;
+    VEC3 adjustedPoint = intersection.intersectionPoint - (n * CUSTOM_EPSILON);
+    if (k < 0.0) {
+        Ray reflectedRay = Ray(adjustedPoint, R);
+        return reflectedRay;
     } else {
-        // return refracted ray
-        VEC3 two = normal * sqrt(TTRCheck);
-        VEC3 direction = one - two;
-        Ray refractionRay(adjustedIntersectionPoint, direction);
-        return refractionRay;
+        VEC3 T = eta * I + (eta * cosi - sqrt(k)) * n;
+        Ray refractedRay = Ray(adjustedPoint, T);
+        return refractedRay;
     }
 }
 

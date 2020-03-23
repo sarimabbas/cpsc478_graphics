@@ -3,6 +3,7 @@
         "*.js": "javascriptreact",
         "*.pyde": "python",
         "*.html": "html",
-        "vector": "cpp"
+        "vector": "cpp",
+        "algorithm": "cpp"
     }
 }
