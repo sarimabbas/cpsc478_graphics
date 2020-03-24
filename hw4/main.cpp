@@ -29,7 +29,7 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
               bool useSpecular, bool useShadows, bool useMirror,
               int reflectionRecursionCounter, bool useRefraction,
-              int refractionRecursionCounter, bool movingIn);
+              bool useFresnel);
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular);
 Real clamp(Real x, Real lower, Real upper);
@@ -40,9 +40,10 @@ Real CUSTOM_EPSILON = 10000.0 * std::numeric_limits<Real>::epsilon();
 enum Material { OPAQUE, MIRROR, DIELECTRIC };
 int MAX_RECURSION_DEPTH = 5;
 Ray createReflectionRay(IntersectResult intersection, Ray ray);
-Ray createRefractionRay(IntersectResult intersection, Ray ray, bool movingIn);
+Ray createRefractionRay(IntersectResult intersection, Ray ray);
 Real REFRACT_GLASS = 1.5;
 Real REFRACT_AIR = 1.0;
+Real fresnel(IntersectResult intersection, Ray ray);
 
 void part_1(Camera cam, vector<Shape*> scene);
 void part_2(Camera cam, vector<Shape*> scene);
@@ -52,6 +53,7 @@ void part_5(Camera cam, vector<Shape*> scene);
 void part_6(Camera cam, vector<Shape*> scene);
 void part_7(Camera cam, vector<Shape*> scene);
 void part_8(Camera cam, vector<Shape*> scene);
+void part_9(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -308,7 +310,7 @@ void part_2(Camera cam, vector<Shape*> scene) {
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color = rayColor(scene, ray, lights, 10.0, false, false, false,
-                                  false, false, 0, false, 0, true);
+                                  false, false, 0, false, false);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -337,8 +339,7 @@ void part_3(Camera cam, vector<Shape*> scene) {
     bool useMirror = false;
     int reflectionRecursionCounter = 0;
     bool useRefraction = false;
-    int refractionRecursionCounter = 0;
-    bool movingIn = true;
+    bool useFresnel = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -347,10 +348,10 @@ void part_3(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(
-                scene, ray, lights, phongExponent, useLights, useMultipleLights,
-                useSpecular, useShadows, useMirror, reflectionRecursionCounter,
-                useRefraction, refractionRecursionCounter, movingIn);
+            VEC3 color =
+                rayColor(scene, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -379,8 +380,7 @@ void part_4(Camera cam, vector<Shape*> scene) {
     bool useMirror = false;
     int reflectionRecursionCounter = 0;
     bool useRefraction = false;
-    int refractionRecursionCounter = 0;
-    bool movingIn = true;
+    bool useFresnel = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -389,10 +389,10 @@ void part_4(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(
-                scene, ray, lights, phongExponent, useLights, useMultipleLights,
-                useSpecular, useShadows, useMirror, reflectionRecursionCounter,
-                useRefraction, refractionRecursionCounter, movingIn);
+            VEC3 color =
+                rayColor(scene, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -421,8 +421,7 @@ void part_5(Camera cam, vector<Shape*> scene) {
     bool useMirror = false;
     int reflectionRecursionCounter = 0;
     bool useRefraction = false;
-    int refractionRecursionCounter = 0;
-    bool movingIn = true;
+    bool useFresnel = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -431,10 +430,10 @@ void part_5(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(
-                scene, ray, lights, phongExponent, useLights, useMultipleLights,
-                useSpecular, useShadows, useMirror, reflectionRecursionCounter,
-                useRefraction, refractionRecursionCounter, movingIn);
+            VEC3 color =
+                rayColor(scene, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -463,8 +462,7 @@ void part_6(Camera cam, vector<Shape*> scene) {
     bool useMirror = false;
     int reflectionRecursionCounter = 0;
     bool useRefraction = false;
-    int refractionRecursionCounter = 0;
-    bool movingIn = true;
+    bool useFresnel = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -473,10 +471,10 @@ void part_6(Camera cam, vector<Shape*> scene) {
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
-            VEC3 color = rayColor(
-                scene, ray, lights, phongExponent, useLights, useMultipleLights,
-                useSpecular, useShadows, useMirror, reflectionRecursionCounter,
-                useRefraction, refractionRecursionCounter, movingIn);
+            VEC3 color =
+                rayColor(scene, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -502,6 +500,14 @@ void part_7(Camera cam, vector<Shape*> scene) {
         }
     }
 
+    // for (int i = -12; i < 0; i += 2) {
+    //     for (int j = -2; j < 4; j += 2) {
+    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
+    //                                        0.0));
+    //     }
+    // }
+
     for (int i = 0; i < wallOfSpheres.size(); i++) {
         sceneCopy.push_back(&(wallOfSpheres[i]));
     }
@@ -524,21 +530,29 @@ void part_7(Camera cam, vector<Shape*> scene) {
     bool useMirror = true;
     int reflectionRecursionCounter = 0;
     bool useRefraction = false;
-    int refractionRecursionCounter = 0;
-    bool movingIn = true;
+    bool useFresnel = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
+            // if (i == 318 && j == 214) {
+            //     cout << "hello" << endl;
+            // }
+
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
             VEC3 color =
                 rayColor(sceneCopy, ray, lights, phongExponent, useLights,
                          useMultipleLights, useSpecular, useShadows, useMirror,
-                         reflectionRecursionCounter, useRefraction,
-                         refractionRecursionCounter, movingIn);
+                         reflectionRecursionCounter, useRefraction, useFresnel);
+
+            // if (i == 318 && j == 214) {
+            //     cout << color[0] << " " << color[1] << " " << color[2] <<
+            //     endl;
+            // }
+
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -595,8 +609,7 @@ void part_8(Camera cam, vector<Shape*> scene) {
     bool useMirror = true;
     int reflectionRecursionCounter = 0;
     bool useRefraction = true;
-    int refractionRecursionCounter = 0;
-    bool movingIn = true;
+    bool useFresnel = false;
 
     // create a ray map
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
@@ -608,8 +621,7 @@ void part_8(Camera cam, vector<Shape*> scene) {
             VEC3 color =
                 rayColor(sceneCopy, ray, lights, phongExponent, useLights,
                          useMultipleLights, useSpecular, useShadows, useMirror,
-                         reflectionRecursionCounter, useRefraction,
-                         refractionRecursionCounter, movingIn);
+                         reflectionRecursionCounter, useRefraction, useFresnel);
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
             ppm[index] = color[0] * 255.0;
@@ -619,6 +631,75 @@ void part_8(Camera cam, vector<Shape*> scene) {
     }
     // write out to image
     writePPM("8.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
+// * fresnel effect
+void part_9(Camera cam, vector<Shape*> scene) {
+    // modify the scene and add the wall of spheres
+    vector<Shape*> sceneCopy = scene;
+    vector<Sphere> wallOfSpheres;
+
+    // for (int i = -12; i < 0; i += 2) {
+    //     for (int j = -2; j < 4; j += 2) {
+    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
+    //                                        0.0));
+    //     }
+    // }
+
+    for (int i = -20; i < 20; i += 2) {
+        for (int j = -2; j < 18; j += 2) {
+            wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+                                           VEC3(1.0, 1.0, 1.0), OPAQUE, 0.0));
+        }
+    }
+
+    for (int i = 0; i < wallOfSpheres.size(); i++) {
+        sceneCopy.push_back(&(wallOfSpheres[i]));
+    }
+
+    // make the first sphere black, and glass
+    sceneCopy[0]->color = VEC3(0.0, 0.0, 0.0);
+    sceneCopy[0]->type = DIELECTRIC;
+    sceneCopy[0]->refractiveIndex = REFRACT_GLASS;
+
+    // add lights
+    Light one = Light(VEC3(10.0, 10.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 10.0, 7.5), VEC3(0.5, 0.25, 0.25));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = true;
+    bool useSpecular = true;
+    bool useShadows = true;
+    bool useMirror = true;
+    int reflectionRecursionCounter = 0;
+    bool useRefraction = true;
+    bool useFresnel = true;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color =
+                rayColor(sceneCopy, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("9.ppm", cam.xRes, cam.yRes, ppm);
     delete[] ppm;
 }
 
@@ -651,7 +732,8 @@ int main(int argc, char** argv) {
     // part_5(cam, scene);
     // part_6(cam, scene);
     // part_7(cam, scene);
-    part_8(cam, scene);
+    // part_8(cam, scene);
+    part_9(cam, scene);
 
     return 0;
 }
@@ -660,7 +742,7 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
               bool useSpecular, bool useShadows, bool useMirror,
               int reflectionRecursionCounter, bool useRefraction,
-              int refractionRecursionCounter, bool movingIn) {
+              bool useFresnel) {
     // do an intersection with the scene
     IntersectResult intersection = intersectScene(scene, ray, 0.0);
 
@@ -698,11 +780,10 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
             reflectionRecursionCounter != MAX_RECURSION_DEPTH) {
             Ray reflectionRay = createReflectionRay(intersection, ray);
             // call the reflection recursively
-            VEC3 reflectionColor =
-                rayColor(scene, reflectionRay, lights, phongExponent, useLights,
-                         useMultipleLights, useSpecular, useShadows, useMirror,
-                         reflectionRecursionCounter + 1, useRefraction,
-                         refractionRecursionCounter, movingIn);
+            VEC3 reflectionColor = rayColor(
+                scene, reflectionRay, lights, phongExponent, useLights,
+                useMultipleLights, useSpecular, useShadows, useMirror,
+                reflectionRecursionCounter + 1, useRefraction, useFresnel);
             color += reflectionColor;
         }
     }
@@ -710,15 +791,32 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
     if (useRefraction) {
         if (intersection.intersectingShape->type == DIELECTRIC &&
             reflectionRecursionCounter != MAX_RECURSION_DEPTH) {
-            // if entering dielectric
-            Ray refractionRay =
-                createRefractionRay(intersection, ray, movingIn);
-            VEC3 refractionColor =
-                rayColor(scene, refractionRay, lights, phongExponent, useLights,
-                         useMultipleLights, useSpecular, useShadows, useMirror,
-                         reflectionRecursionCounter + 1, useRefraction,
-                         refractionRecursionCounter, !movingIn);
-            color += refractionColor;
+            if (useFresnel) {
+                // get fresnel coefficients
+                Real kReflectance = fresnel(intersection, ray);
+                Real kRefraction = 1.0 - kReflectance;
+                Ray refractionRay = createRefractionRay(intersection, ray);
+                Ray reflectionRay = createReflectionRay(intersection, ray);
+                VEC3 reflectionColor = rayColor(
+                    scene, reflectionRay, lights, phongExponent, useLights,
+                    useMultipleLights, useSpecular, useShadows, useMirror,
+                    reflectionRecursionCounter + 1, useRefraction, useFresnel);
+                VEC3 refractionColor = rayColor(
+                    scene, refractionRay, lights, phongExponent, useLights,
+                    useMultipleLights, useSpecular, useShadows, useMirror,
+                    reflectionRecursionCounter + 1, useRefraction, useFresnel);
+                color += (kReflectance * reflectionColor) +
+                         (kRefraction * refractionColor);
+
+            } else {
+                // if entering dielectric
+                Ray refractionRay = createRefractionRay(intersection, ray);
+                VEC3 refractionColor = rayColor(
+                    scene, refractionRay, lights, phongExponent, useLights,
+                    useMultipleLights, useSpecular, useShadows, useMirror,
+                    reflectionRecursionCounter + 1, useRefraction, useFresnel);
+                color += refractionColor;
+            }
         }
     }
 
@@ -757,7 +855,42 @@ Ray createReflectionRay(IntersectResult intersection, Ray ray) {
     return reflectionRay;
 }
 
-Ray createRefractionRay(IntersectResult intersection, Ray ray, bool movingIn) {
+Real fresnel(IntersectResult intersection, Ray ray) {
+    Real kReflectance;
+
+    VEC3 N = intersection.normal;
+
+    // incidence
+    VEC3 I = (intersection.intersectionPoint - ray.origin);
+    I /= I.norm();
+
+    Real cosi = clamp(-1.0, 1.0, I.dot(N));
+    Real etai = 1.0;
+    Real etat = intersection.intersectingShape->refractiveIndex;
+    if (cosi > 0.0) {
+        std::swap(etai, etat);
+    }
+    // Compute sini using Snell's law
+    Real sint = etai / etat * sqrt(std::max(0.0, 1.0 - cosi * cosi));
+    // Total internal reflection
+    if (sint >= 1.0) {
+        kReflectance = 1.0;
+    } else {
+        Real cost = sqrt(std::max(0.0, 1.0 - sint * sint));
+        cosi = fabs(cosi);
+        Real Rs =
+            ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+        Real Rp =
+            ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+        kReflectance = (Rs * Rs + Rp * Rp) / 2.0;
+    }
+
+    return kReflectance;
+    // As a consequence of the conservation of energy, transmittance is given
+    // by: kt = 1 - kr;
+}
+
+Ray createRefractionRay(IntersectResult intersection, Ray ray) {
     // normal
     VEC3 N = intersection.normal;
 
