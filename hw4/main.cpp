@@ -750,21 +750,12 @@ void part_10(Camera cam, vector<Shape*> scene) {
 
     vector<Sphere> wallOfSpheres;
 
-    // for (int i = -12; i < 0; i += 2) {
-    //     for (int j = -2; j < 4; j += 2) {
-    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
-    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
-    //                                        0.0));
-    //     }
-    // }
-
-    // for (int i = -20; i < 20; i += 2) {
-    //     for (int j = -2; j < 18; j += 2) {
-    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
-    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
-    //                                        0.0));
-    //     }
-    // }
+    for (int i = -20; i < 20; i += 2) {
+        for (int j = -2; j < 18; j += 2) {
+            wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+                                           VEC3(1.0, 1.0, 1.0), OPAQUE, 0.0));
+        }
+    }
 
     for (int i = 0; i < wallOfSpheres.size(); i++) {
         sceneCopy.push_back(&(wallOfSpheres[i]));
@@ -823,10 +814,6 @@ void part_10(Camera cam, vector<Shape*> scene) {
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
-            if (i == 640 && j == 600 - 360) {
-                cout << "hello" << endl;
-            }
-
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
             // do a scene intersection
