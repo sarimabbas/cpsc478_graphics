@@ -54,6 +54,7 @@ void part_6(Camera cam, vector<Shape*> scene);
 void part_7(Camera cam, vector<Shape*> scene);
 void part_8(Camera cam, vector<Shape*> scene);
 void part_9(Camera cam, vector<Shape*> scene);
+void part_10(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -166,6 +167,42 @@ class Sphere : public Shape {
             return IntersectResult(closestT, true, normal, intersectionPoint,
                                    this);
         }
+    }
+};
+
+class Triangle : public Shape {
+   public:
+    VEC3 a;
+    VEC3 b;
+    VEC3 c;
+
+    // call the sphere constructor and the base constructor
+    Triangle(VEC3 a, VEC3 b, VEC3 c, VEC3 color, Material type,
+             Real refractiveIndex)
+        : a(a), b(b), c(c), Shape(color, type, refractiveIndex) {}
+
+    // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+    IntersectResult intersect(Ray ray) {
+        VEC3 edge1 = b - a;
+        VEC3 edge2 = c - a;
+        VEC3 h = ray.direction.cross(edge2);
+        VEC3 normal = edge2.cross(edge1);
+        normal /= normal.norm();
+        Real v_a = edge1.dot(h);
+        if (v_a > -CUSTOM_EPSILON && v_a < CUSTOM_EPSILON)
+            return IntersectResult();  // This ray is parallel to this triangle.
+        Real v_f = 1.0 / v_a;
+        VEC3 s = ray.origin - a;
+        Real v_u = v_f * s.dot(h);
+        if (v_u < 0.0 || v_u > 1.0) return IntersectResult();
+        VEC3 q = s.cross(edge1);
+        Real v_v = v_f * ray.direction.dot(q);
+        if (v_v < 0.0 || v_u + v_v > 1.0) return IntersectResult();
+        // At this stage we can compute t to find out where the intersection
+        // point is on the line.
+        Real t = v_f * edge2.dot(q);
+        VEC3 intersectionPoint = ray.origin + ray.direction * t;
+        return IntersectResult(t, true, normal, intersectionPoint, this);
     }
 };
 
@@ -703,6 +740,112 @@ void part_9(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * triangle intersection
+void part_10(Camera cam, vector<Shape*> scene) {
+    // modify the scene and add the wall of spheres
+    vector<Shape*> sceneCopy = scene;
+
+    // remove the second sphere
+    sceneCopy.erase(sceneCopy.begin() + 1);
+
+    vector<Sphere> wallOfSpheres;
+
+    // for (int i = -12; i < 0; i += 2) {
+    //     for (int j = -2; j < 4; j += 2) {
+    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
+    //                                        0.0));
+    //     }
+    // }
+
+    // for (int i = -20; i < 20; i += 2) {
+    //     for (int j = -2; j < 18; j += 2) {
+    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
+    //                                        0.0));
+    //     }
+    // }
+
+    for (int i = 0; i < wallOfSpheres.size(); i++) {
+        sceneCopy.push_back(&(wallOfSpheres[i]));
+    }
+
+    // make the first sphere black, and glass
+    sceneCopy[0]->color = VEC3(0.0, 0.0, 0.0);
+    sceneCopy[0]->type = DIELECTRIC;
+    sceneCopy[0]->refractiveIndex = REFRACT_GLASS;
+
+    // transform
+    MATRIX3 rotation;
+    rotation.setZero();
+    rotation(0, 0) = cos(degreesToRadians(45));
+    rotation(0, 2) = sin(degreesToRadians(45));
+    rotation(1, 1) = 1.0;
+    rotation(2, 0) = -sin(degreesToRadians(45));
+    rotation(2, 2) = cos(degreesToRadians(45));
+
+    // prepare the vertices
+    VEC3 triangleVertices[4] = {VEC3(0.5, -3.0, 10), VEC3(6.5, -3.0, 10.0),
+                                VEC3(6.5, 3.0, 10.0), VEC3(0.5, 3.0, 10.0)};
+
+    for (int i = 0; i < 4; i++) {
+        triangleVertices[i] = triangleVertices[i] - VEC3(3.5, 0.0, 10.0);
+        triangleVertices[i] = rotation * triangleVertices[i];
+        triangleVertices[i] = triangleVertices[i] + VEC3(3.5, 0.0, 10.0);
+    }
+
+    Triangle triangleOne =
+        Triangle(triangleVertices[0], triangleVertices[2], triangleVertices[3],
+                 VEC3(1.0, 0.25, 0.25), OPAQUE, 0.0);
+    Triangle triangleTwo =
+        Triangle(triangleVertices[0], triangleVertices[1], triangleVertices[2],
+                 VEC3(0.25, 1.0, 0.25), OPAQUE, 0.0);
+    sceneCopy.push_back(&triangleOne);
+    sceneCopy.push_back(&triangleTwo);
+
+    // add lights
+    Light one = Light(VEC3(10.0, 10.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 10.0, 7.5), VEC3(0.5, 0.25, 0.25));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = true;
+    bool useSpecular = true;
+    bool useShadows = true;
+    bool useMirror = true;
+    int reflectionRecursionCounter = 0;
+    bool useRefraction = true;
+    bool useFresnel = true;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            if (i == 640 && j == 600 - 360) {
+                cout << "hello" << endl;
+            }
+
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color =
+                rayColor(sceneCopy, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("10.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
 int main(int argc, char** argv) {
     int xRes = 800;
     int yRes = 600;
@@ -733,7 +876,8 @@ int main(int argc, char** argv) {
     // part_6(cam, scene);
     // part_7(cam, scene);
     // part_8(cam, scene);
-    part_9(cam, scene);
+    // part_9(cam, scene);
+    part_10(cam, scene);
 
     return 0;
 }
@@ -990,8 +1134,6 @@ IntersectResult intersectScene(vector<Shape*> scene, Ray ray, Real tLow) {
 
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     // construct an eye coordinate frame
-    // TODO: felicia says she used squaredNorm, but it doesn't make a
-    // difference
     VEC3 gaze = cam.lookAt - cam.eye;
     VEC3 W = -gaze / gaze.norm();
     VEC3 upCrossW = cam.up.cross(W);
