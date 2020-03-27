@@ -179,22 +179,26 @@ class Triangle : public Shape {
              Real refractiveIndex)
         : a(a), b(b), c(c), Shape(color, type, refractiveIndex) {}
 
+    // Attribution
     // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     IntersectResult intersect(Ray ray) {
+        // find the normal of the triangle
+        // by taking cross product of two vectors in its plane
         VEC3 edge1 = b - a;
         VEC3 edge2 = c - a;
         VEC3 h = ray.direction.cross(edge2);
         VEC3 normal = edge2.cross(edge1);
         normal /= normal.norm();
 
+        // parallel test
         Real v_a = edge1.dot(h);
         if (v_a > -CUSTOM_EPSILON && v_a < CUSTOM_EPSILON) {
             return IntersectResult();
         }
 
+        // out of bounds tests
         Real v_f = 1.0 / v_a;
         VEC3 s = ray.origin - a;
-
         Real v_u = v_f * s.dot(h);
         if (v_u < 0.0 || v_u > 1.0) {
             return IntersectResult();
@@ -206,6 +210,7 @@ class Triangle : public Shape {
             return IntersectResult();
         }
 
+        // compute ray intersection point
         Real t = v_f * edge2.dot(q);
         VEC3 intersectionPoint = ray.origin + ray.direction * t;
         return IntersectResult(t, true, normal, intersectionPoint, this);
@@ -1025,6 +1030,8 @@ Real fresnel(IntersectResult intersection, Ray ray) {
     return kReflectance;
 }
 
+// Attribution
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 Ray createRefractionRay(IntersectResult intersection, Ray ray) {
     // normal
     VEC3 N = intersection.normal;
