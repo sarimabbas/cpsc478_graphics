@@ -997,6 +997,8 @@ Ray createReflectionRay(IntersectResult intersection, Ray ray) {
     return reflectionRay;
 }
 
+// Attribution
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 Real fresnel(IntersectResult intersection, Ray ray) {
     Real kReflectance;
 
@@ -1006,14 +1008,22 @@ Real fresnel(IntersectResult intersection, Ray ray) {
     VEC3 I = (intersection.intersectionPoint - ray.origin);
     I /= I.norm();
 
+    // same side or separate
     Real cosi = clamp(-1.0, 1.0, I.dot(N));
+
+    // the two indices of refraction
     Real etai = 1.0;
     Real etat = intersection.intersectingShape->refractiveIndex;
+
+    // check direction
     if (cosi > 0.0) {
         std::swap(etai, etat);
     }
-    // Compute sini using Snell's law
-    Real sint = etai / etat * sqrt(std::max(0.0, 1.0 - cosi * cosi));
+    Real iorRatio = etai / etat;
+
+    // total internal reflection test
+    Real sint = iorRatio * sqrt(std::max(0.0, 1.0 - cosi * cosi));
+
     // Total internal reflection
     if (sint >= 1.0) {
         kReflectance = 1.0;
