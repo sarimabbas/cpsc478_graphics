@@ -1037,9 +1037,14 @@ Ray createRefractionRay(IntersectResult intersection, Ray ray) {
     VEC3 R = -I + (2.0 * I.dot(N) * N);
     R /= R.norm();
 
+    // this gives direction of entry
     Real cosi = clamp(-1.0, 1.0, I.dot(N));
+
+    // incoming and outgoing ior
     Real etai = REFRACT_AIR;
     Real etat = intersection.intersectingShape->refractiveIndex;
+
+    // if going inside to outside, flip normal and swap ior
     VEC3 n = N;
     if (cosi < 0) {
         cosi = -cosi;
@@ -1047,10 +1052,16 @@ Ray createRefractionRay(IntersectResult intersection, Ray ray) {
         std::swap(etai, etat);
         n = -N;
     }
+
+    // calculate ratio of ior
     Real eta = etai / etat;
+
+    // test for total internal reflection
     Real k = 1.0 - eta * eta * (1.0 - cosi * cosi);
 
+    // avoid refraction acne
     VEC3 adjustedPoint = intersection.intersectionPoint - (n * CUSTOM_EPSILON);
+
     if (k < 0.0) {
         Ray reflectedRay = Ray(adjustedPoint, R);
         return reflectedRay;
