@@ -35,7 +35,7 @@ bool isPointInShadow(vector<Shape*> scene, Light* light,
                      IntersectResult intersection);
 
 enum Material { OPAQUE, MIRROR, DIELECTRIC };
-int MAX_RECURSION_DEPTH = 5;
+int MAX_RECURSION_DEPTH = 10;
 Ray createReflectionRay(IntersectResult intersection, Ray ray);
 Ray createRefractionRay(IntersectResult intersection, Ray ray);
 Real REFRACT_GLASS = 1.5;
