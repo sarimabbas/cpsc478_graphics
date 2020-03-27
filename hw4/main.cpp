@@ -865,17 +865,17 @@ int main(int argc, char** argv) {
     scene.push_back(&two);
     scene.push_back(&three);
 
-    // part_1(cam, scene);
+    part_1(cam, scene);
     part_2(cam, scene);
-    // part_3(cam, scene);
-    // part_4(cam, scene);
-    // part_5(cam, scene);
-    // part_6(cam, scene);
-    // part_7(cam, scene);
-    // part_8(cam, scene);
-    // part_9(cam, scene);
-    // part_10(cam, scene);
-    // part_11(cam, scene);
+    part_3(cam, scene);
+    part_4(cam, scene);
+    part_5(cam, scene);
+    part_6(cam, scene);
+    part_7(cam, scene);
+    part_8(cam, scene);
+    part_9(cam, scene);
+    part_10(cam, scene);
+    part_11(cam, scene);
 
     return 0;
 }
