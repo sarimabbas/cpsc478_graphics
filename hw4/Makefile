@@ -15,13 +15,13 @@
 
 all: main.cpp run
 
-SOURCES    = main.cpp
+SOURCES    = main.cpp animation.cpp utilities.cpp
 OBJECTS    = $(SOURCES:.cpp=.o)
 
 .cpp.o:
 	g++ -w -c -g $< -o $@
 
-run: main.o
+run: main.o animation.o utilities.o
 	g++ $(OBJECTS) $(LDFLAGS) -o $@
 
 clean:

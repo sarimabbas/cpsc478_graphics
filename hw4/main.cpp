@@ -6,8 +6,12 @@
 #include <vector>
 
 #include "SETTINGS.h"
+#include "animation.hpp"
+#include "utilities.hpp"
 
 using namespace std;
+
+Real CUSTOM_EPSILON = generateEpsilon();
 
 // forward declaration
 class Camera;
@@ -16,14 +20,9 @@ class Shape;
 class Sphere;
 class IntersectResult;
 class Light;
-Real degreesToRadians(Real degrees);
+
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
-Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam);
-float* allocatePPM(int xRes, int yRes);
-void initPPM(float* values, int xRes, int yRes);
-int indexIntoPPM(int x, int y, int xRes, int yRes,
-                 bool originBottomLeft = false);
-void writeColorToPPM(VEC3 color, float* ppm, int startIndex);
+
 IntersectResult intersectScene(vector<Shape*> scene, Ray ray, Real tLow);
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
@@ -32,11 +31,9 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               bool useFresnel);
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular);
-Real clamp(Real x, Real lower, Real upper);
-VEC3 clampVec3(VEC3 vec, Real low, Real high);
 bool isPointInShadow(vector<Shape*> scene, Light* light,
                      IntersectResult intersection);
-Real CUSTOM_EPSILON = 10000.0 * std::numeric_limits<Real>::epsilon();
+
 enum Material { OPAQUE, MIRROR, DIELECTRIC };
 int MAX_RECURSION_DEPTH = 5;
 Ray createReflectionRay(IntersectResult intersection, Ray ray);
@@ -55,6 +52,7 @@ void part_7(Camera cam, vector<Shape*> scene);
 void part_8(Camera cam, vector<Shape*> scene);
 void part_9(Camera cam, vector<Shape*> scene);
 void part_10(Camera cam, vector<Shape*> scene);
+void part_11(Camera cam, vector<Shape*> scene);
 
 class Camera {
    public:
@@ -188,18 +186,26 @@ class Triangle : public Shape {
         VEC3 h = ray.direction.cross(edge2);
         VEC3 normal = edge2.cross(edge1);
         normal /= normal.norm();
+
         Real v_a = edge1.dot(h);
-        if (v_a > -CUSTOM_EPSILON && v_a < CUSTOM_EPSILON)
-            return IntersectResult();  // This ray is parallel to this triangle.
+        if (v_a > -CUSTOM_EPSILON && v_a < CUSTOM_EPSILON) {
+            return IntersectResult();
+        }
+
         Real v_f = 1.0 / v_a;
         VEC3 s = ray.origin - a;
+
         Real v_u = v_f * s.dot(h);
-        if (v_u < 0.0 || v_u > 1.0) return IntersectResult();
+        if (v_u < 0.0 || v_u > 1.0) {
+            return IntersectResult();
+        }
+
         VEC3 q = s.cross(edge1);
         Real v_v = v_f * ray.direction.dot(q);
-        if (v_v < 0.0 || v_u + v_v > 1.0) return IntersectResult();
-        // At this stage we can compute t to find out where the intersection
-        // point is on the line.
+        if (v_v < 0.0 || v_u + v_v > 1.0) {
+            return IntersectResult();
+        }
+
         Real t = v_f * edge2.dot(q);
         VEC3 intersectionPoint = ray.origin + ray.direction * t;
         return IntersectResult(t, true, normal, intersectionPoint, this);
@@ -213,68 +219,6 @@ class Light {
 
     Light(VEC3 position, VEC3 color) : position(position), color(color) {}
 };
-
-///////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////
-void readPPM(const string& filename, int& xRes, int& yRes, float*& values) {
-    // try to open the file
-    FILE* fp;
-    fp = fopen(filename.c_str(), "rb");
-    if (fp == NULL) {
-        cout << " Could not open file \"" << filename.c_str()
-             << "\" for reading." << endl;
-        cout << " Make sure you're not trying to read from a weird "
-                "location or "
-                "with a "
-             << endl;
-        cout << " strange filename. Bailing ... " << endl;
-        exit(0);
-    }
-
-    // get the dimensions
-    fscanf(fp, "P6\n%d %d\n255\n", &xRes, &yRes);
-    int totalCells = xRes * yRes;
-
-    // grab the pixel values
-    unsigned char* pixels = new unsigned char[3 * totalCells];
-    fread(pixels, 1, totalCells * 3, fp);
-
-    // copy to a nicer data type
-    values = new float[3 * totalCells];
-    for (int i = 0; i < 3 * totalCells; i++) values[i] = pixels[i];
-
-    // clean up
-    delete[] pixels;
-    fclose(fp);
-    cout << " Read in file " << filename.c_str() << endl;
-}
-
-///////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////
-void writePPM(const string& filename, int& xRes, int& yRes,
-              const float* values) {
-    int totalCells = xRes * yRes;
-    unsigned char* pixels = new unsigned char[3 * totalCells];
-    for (int i = 0; i < 3 * totalCells; i++) pixels[i] = values[i];
-
-    FILE* fp;
-    fp = fopen(filename.c_str(), "wb");
-    if (fp == NULL) {
-        cout << " Could not open file \"" << filename.c_str()
-             << "\" for writing." << endl;
-        cout << " Make sure you're not trying to write from a weird "
-                "location "
-                "or with a "
-             << endl;
-        cout << " strange filename. Bailing ... " << endl;
-        exit(0);
-    }
-
-    fprintf(fp, "P6\n%d %d\n255\n", xRes, yRes);
-    fwrite(pixels, 1, totalCells * 3, fp);
-    fclose(fp);
-    delete[] pixels;
-}
 
 // * ray generation maps
 void part_1(Camera cam, vector<Shape*> scene) {
@@ -537,14 +481,6 @@ void part_7(Camera cam, vector<Shape*> scene) {
         }
     }
 
-    // for (int i = -12; i < 0; i += 2) {
-    //     for (int j = -2; j < 4; j += 2) {
-    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
-    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
-    //                                        0.0));
-    //     }
-    // }
-
     for (int i = 0; i < wallOfSpheres.size(); i++) {
         sceneCopy.push_back(&(wallOfSpheres[i]));
     }
@@ -573,22 +509,14 @@ void part_7(Camera cam, vector<Shape*> scene) {
     float* ppm = allocatePPM(cam.xRes, cam.yRes);
     for (int i = 0; i < cam.xRes; i++) {
         for (int j = 0; j < cam.yRes; j++) {
-            // if (i == 318 && j == 214) {
-            //     cout << "hello" << endl;
-            // }
-
             // generate the ray
             Ray ray = rayGeneration(i, j, cam);
+
             // do a scene intersection
             VEC3 color =
                 rayColor(sceneCopy, ray, lights, phongExponent, useLights,
                          useMultipleLights, useSpecular, useShadows, useMirror,
                          reflectionRecursionCounter, useRefraction, useFresnel);
-
-            // if (i == 318 && j == 214) {
-            //     cout << color[0] << " " << color[1] << " " << color[2] <<
-            //     endl;
-            // }
 
             // color the pixel
             int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
@@ -607,14 +535,6 @@ void part_8(Camera cam, vector<Shape*> scene) {
     // modify the scene and add the wall of spheres
     vector<Shape*> sceneCopy = scene;
     vector<Sphere> wallOfSpheres;
-
-    // for (int i = -12; i < 0; i += 2) {
-    //     for (int j = -2; j < 4; j += 2) {
-    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
-    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
-    //                                        0.0));
-    //     }
-    // }
 
     for (int i = -20; i < 20; i += 2) {
         for (int j = -2; j < 18; j += 2) {
@@ -676,14 +596,6 @@ void part_9(Camera cam, vector<Shape*> scene) {
     // modify the scene and add the wall of spheres
     vector<Shape*> sceneCopy = scene;
     vector<Sphere> wallOfSpheres;
-
-    // for (int i = -12; i < 0; i += 2) {
-    //     for (int j = -2; j < 4; j += 2) {
-    //         wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
-    //                                        VEC3(1.0, 1.0, 1.0), OPAQUE,
-    //                                        0.0));
-    //     }
-    // }
 
     for (int i = -20; i < 20; i += 2) {
         for (int j = -2; j < 18; j += 2) {
@@ -833,6 +745,99 @@ void part_10(Camera cam, vector<Shape*> scene) {
     delete[] ppm;
 }
 
+// * triangles are mirrors
+void part_11(Camera cam, vector<Shape*> scene) {
+    // modify the scene and add the wall of spheres
+    vector<Shape*> sceneCopy = scene;
+
+    // remove the second sphere
+    sceneCopy.erase(sceneCopy.begin() + 1);
+
+    vector<Sphere> wallOfSpheres;
+
+    for (int i = -20; i < 20; i += 2) {
+        for (int j = -2; j < 18; j += 2) {
+            wallOfSpheres.push_back(Sphere(1.0, VEC3((Real)i, (Real)j, 20.0),
+                                           VEC3(1.0, 1.0, 1.0), OPAQUE, 0.0));
+        }
+    }
+
+    for (int i = 0; i < wallOfSpheres.size(); i++) {
+        sceneCopy.push_back(&(wallOfSpheres[i]));
+    }
+
+    // make the first sphere black, and glass
+    sceneCopy[0]->color = VEC3(0.0, 0.0, 0.0);
+    sceneCopy[0]->type = DIELECTRIC;
+    sceneCopy[0]->refractiveIndex = REFRACT_GLASS;
+
+    // transform
+    MATRIX3 rotation;
+    rotation.setZero();
+    rotation(0, 0) = cos(degreesToRadians(45));
+    rotation(0, 2) = sin(degreesToRadians(45));
+    rotation(1, 1) = 1.0;
+    rotation(2, 0) = -sin(degreesToRadians(45));
+    rotation(2, 2) = cos(degreesToRadians(45));
+
+    // prepare the vertices
+    VEC3 triangleVertices[4] = {VEC3(0.5, -3.0, 10), VEC3(6.5, -3.0, 10.0),
+                                VEC3(6.5, 3.0, 10.0), VEC3(0.5, 3.0, 10.0)};
+
+    for (int i = 0; i < 4; i++) {
+        triangleVertices[i] = triangleVertices[i] - VEC3(3.5, 0.0, 10.0);
+        triangleVertices[i] = rotation * triangleVertices[i];
+        triangleVertices[i] = triangleVertices[i] + VEC3(3.5, 0.0, 10.0);
+    }
+
+    Triangle triangleOne =
+        Triangle(triangleVertices[0], triangleVertices[2], triangleVertices[3],
+                 VEC3(0.0, 0.0, 0.0), MIRROR, 0.0);
+    Triangle triangleTwo =
+        Triangle(triangleVertices[0], triangleVertices[1], triangleVertices[2],
+                 VEC3(0.0, 0.0, 0.0), MIRROR, 0.0);
+    sceneCopy.push_back(&triangleOne);
+    sceneCopy.push_back(&triangleTwo);
+
+    // add lights
+    Light one = Light(VEC3(10.0, 10.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 10.0, 7.5), VEC3(0.5, 0.25, 0.25));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    Real phongExponent = 10.0;
+    bool useLights = true;
+    bool useMultipleLights = true;
+    bool useSpecular = true;
+    bool useShadows = true;
+    bool useMirror = true;
+    int reflectionRecursionCounter = 0;
+    bool useRefraction = true;
+    bool useFresnel = true;
+
+    // create a ray map
+    float* ppm = allocatePPM(cam.xRes, cam.yRes);
+    for (int i = 0; i < cam.xRes; i++) {
+        for (int j = 0; j < cam.yRes; j++) {
+            // generate the ray
+            Ray ray = rayGeneration(i, j, cam);
+            // do a scene intersection
+            VEC3 color =
+                rayColor(sceneCopy, ray, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter, useRefraction, useFresnel);
+            // color the pixel
+            int index = indexIntoPPM(i, j, cam.xRes, cam.yRes, true);
+            ppm[index] = color[0] * 255.0;
+            ppm[index + 1] = color[1] * 255.0;
+            ppm[index + 2] = color[2] * 255.0;
+        }
+    }
+    // write out to image
+    writePPM("11.ppm", cam.xRes, cam.yRes, ppm);
+    delete[] ppm;
+}
+
 int main(int argc, char** argv) {
     int xRes = 800;
     int yRes = 600;
@@ -856,7 +861,7 @@ int main(int argc, char** argv) {
     scene.push_back(&three);
 
     // part_1(cam, scene);
-    // part_2(cam, scene);
+    part_2(cam, scene);
     // part_3(cam, scene);
     // part_4(cam, scene);
     // part_5(cam, scene);
@@ -864,7 +869,8 @@ int main(int argc, char** argv) {
     // part_7(cam, scene);
     // part_8(cam, scene);
     // part_9(cam, scene);
-    part_10(cam, scene);
+    // part_10(cam, scene);
+    // part_11(cam, scene);
 
     return 0;
 }
@@ -951,7 +957,7 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
         }
     }
 
-    // TODO: is this required?
+    // prevent weird PPM problems by clamping color
     return clampVec3(color, 0.0, 1.0);
 }
 
@@ -1017,8 +1023,6 @@ Real fresnel(IntersectResult intersection, Ray ray) {
     }
 
     return kReflectance;
-    // As a consequence of the conservation of energy, transmittance is given
-    // by: kt = 1 - kr;
 }
 
 Ray createRefractionRay(IntersectResult intersection, Ray ray) {
@@ -1072,15 +1076,15 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
 
     // * calculate the three components
     // ambient
-    VEC3 ambientColor = VEC3(0.0, 0.0, 0.0);  // TODO: what's this?
-    Real ambientIntensity = 1.0;              // TODO: what's this?
+    VEC3 ambientColor = VEC3(0.0, 0.0, 0.0);
+    Real ambientIntensity = 1.0;
     VEC3 ambientComponent = ambientColor * ambientIntensity;
     // diffuse
     VEC3 diffuseComponent = intersection.intersectingShape->color.cwiseProduct(
         light->color * std::max(0.0, intersection.normal.dot(L)));
     // diffuseComponent = clampVec3(diffuseComponent, 0.0, 1.0);
 
-    // specular // TODO: apply phong exponent, but where?
+    // specular
     VEC3 specularComponent = intersection.intersectingShape->color.cwiseProduct(
         light->color * pow(std::max(0.0, R.dot(V)), phongExponent));
     // specularComponent = clampVec3(specularComponent, 0.0, 1.0);
@@ -1152,19 +1156,9 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     Real bottom = bottomRight[1];
     Real left = bottomLeft[0];
 
-    // cout << "T, R, B, L: " << top << ", " << right << ", " << bottom <<
-    // ", "
-    //      << left << "]" << endl;
-
     // assert that the bounds found this way match up with another way
     Real rightMinusLeft = (bottomRight - bottomLeft).norm();
     Real topMinusBottom = (topRight - bottomRight).norm();
-
-    // cout << top - bottom << ":" << topMinusBottom << endl;
-    // cout << right - left << ":" << rightMinusLeft << endl;
-
-    // assert(((top - bottom) == topMinusBottom) &&
-    //        ((right - left) == rightMinusLeft));
 
     // go from pixel coordinates to orthographic raster
     // coordinates. we offset the ray by half to make it
@@ -1179,74 +1173,5 @@ Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     Ray generate = Ray(
         cam.eye, (-cam.distanceToPlane * W) + (u_raster * U) + (v_raster * V));
 
-    // cout << "[Origin: "
-    //      << "(" << generate.origin[0] << ", " << generate.origin[1] << ",
-    //      "
-    //      << generate.origin[2] << "), ";
-
-    // cout << "Direction: "
-    //      << "(" << generate.direction[0] << ", " << generate.direction[1]
-    //      << ", " << generate.direction[2] << "]" << endl;
-
     return generate;
-}
-
-Real degreesToRadians(Real degrees) { return (degrees)*M_PI / 180.0; }
-
-VEC3 clampVec3(VEC3 vec, Real low, Real high) {
-    VEC3 copy = vec;
-    for (int i = 0; i < 3; i++) {
-        copy[i] = clamp(copy[i], low, high);
-    }
-    return copy;
-}
-
-Real clamp(Real x, Real lower, Real upper) {
-    return std::min(upper, std::max(x, lower));
-}
-
-float* allocatePPM(int xRes, int yRes) {
-    float* values = new float[3 * xRes * yRes];
-    if (!values) {
-        cout << "Could not allocate values" << endl;
-        return NULL;
-    }
-    initPPM(values, xRes, yRes);
-    return values;
-}
-
-void initPPM(float* values, int xRes, int yRes) {
-    for (int i = 0; i < xRes * yRes * 3; i += 3) {
-        values[i] = 0;
-        values[i + 1] = 0;
-        values[i + 2] = 0;
-    }
-}
-
-int indexIntoPPM(int x, int y, int xRes, int yRes, bool originBottomLeft) {
-    int index = -1;
-
-    if (originBottomLeft) {
-        // bottom left origin
-        int newY = yRes - 1 - y;
-        index = (newY * xRes * 3) + (x * 3);
-
-    } else {
-        // top left origin (default)
-        index = (y * xRes * 3) + (x * 3);
-    }
-
-    return index;
-}
-
-void writeColorToPPM(VEC3 color, float* ppm, int startIndex) {
-    int index = startIndex;
-    for (int i = 0; i < 3; i++) {
-        if (color[i] < 0.0) {
-            ppm[index] = 0.0;
-        } else {
-            ppm[index] = color[i] * 255;
-        }
-        index++;
-    }
 }
