@@ -32,6 +32,9 @@ class Shape {
 
     // base constructor
     Shape(VEC3 color, Material type, Real refractiveIndex);
+
+    // virtual destructor
+    virtual ~Shape(){};
 };
 
 class Sphere : public Shape {
@@ -44,6 +47,8 @@ class Sphere : public Shape {
            Real refractiveIndex);
 
     IntersectResult intersect(Ray ray);
+
+    ~Sphere();
 };
 
 class Triangle : public Shape {
@@ -59,5 +64,7 @@ class Triangle : public Shape {
     // Attribution
     // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     IntersectResult intersect(Ray ray);
+
+    ~Triangle();
 };
 // class Cylinder;

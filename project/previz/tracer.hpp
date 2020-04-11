@@ -67,6 +67,7 @@ class IntersectResult {
 
 // basic tracer code
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam);
+Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam);
 IntersectResult intersectScene(vector<Shape*> scene, Ray ray, Real tLow);
 VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,

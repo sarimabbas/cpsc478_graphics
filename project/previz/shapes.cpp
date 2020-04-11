@@ -43,6 +43,8 @@ IntersectResult Sphere::intersect(Ray ray) {
     }
 }
 
+Sphere::~Sphere() {}
+
 // TRIANGLE
 
 // call the sphere constructor and the base constructor
@@ -86,3 +88,5 @@ IntersectResult Triangle::intersect(Ray ray) {
     VEC3 intersectionPoint = ray.origin + ray.direction * t;
     return IntersectResult(t, true, normal, intersectionPoint, this);
 }
+
+Triangle::~Triangle() {}

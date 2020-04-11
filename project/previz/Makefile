@@ -20,7 +20,7 @@
 
 
 CC         = g++
-CFLAGS     = -c -Wall -g
+CFLAGS     = -c -Wall -O3
 LDFLAGS    = 
 EXECUTABLE = previz
 

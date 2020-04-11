@@ -37,6 +37,25 @@ IntersectResult::IntersectResult(Real t, bool doesIntersect, VEC3 normal,
       intersectionPoint(intersectionPoint),
       intersectingShape(intersectingShape) {}
 
+Ray rayGenerationAlt(int pixel_i, int pixel_j, Camera cam) {
+    // compute image plane
+    const float halfY =
+        (cam.lookAt - cam.eye).norm() * tan(45.0f / 360.0f * M_PI);
+    const float halfX = halfY * 4.0f / 3.0f;
+    const VEC3 cameraZ = (cam.lookAt - cam.eye).normalized();
+    const VEC3 cameraX = cam.up.cross(cameraZ).normalized();
+    const VEC3 cameraY = cameraZ.cross(cameraX).normalized();
+    // generate the ray, making x-axis go left to right
+    const float ratioX =
+        1.0f - ((cam.xRes - 1) - pixel_i) / float(cam.xRes) * 2.0f;
+    const float ratioY = 1.0f - pixel_j / float(cam.yRes) * 2.0f;
+    const VEC3 rayHitImage =
+        cam.lookAt + ratioX * halfX * cameraX + ratioY * halfY * cameraY;
+    const VEC3 rayDir = (rayHitImage - cam.eye).normalized();
+    Ray generate = Ray(cam.eye, rayDir);
+    return generate;
+}
+
 Ray rayGeneration(int pixel_i, int pixel_j, Camera cam) {
     // construct an eye coordinate frame
     VEC3 gaze = cam.lookAt - cam.eye;
@@ -122,7 +141,7 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
 
     // no intersection (return black)
     if (intersection.intersectingShape == NULL) {
-        return VEC3(0.0, 0.0, 0.0);  // black background
+        return VEC3(1.0, 1.0, 1.0);  // white background
     }
 
     // initialize with ambient
