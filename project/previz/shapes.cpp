@@ -41,6 +41,24 @@ IntersectResult Sphere::intersect(Ray ray) {
 
         return IntersectResult(closestT, true, normal, intersectionPoint, this);
     }
+
+    // const VEC3 op = center - ray.origin;
+    // const float eps = 1e-8;
+    // const float b = op.dot(ray.direction);
+    // float det = b * b - op.dot(op) + radius * radius;
+
+    // // determinant check
+    // if (det < 0) return IntersectResult();
+
+    // det = sqrt(det);
+    // Real t = b - det;
+    // if (t <= eps) {
+    //     t = b + det;
+    //     if (t <= eps) t = -1;
+    // }
+
+    // if (t < 0) return IntersectResult;
+    // return IntersectResult(t, true, );
 }
 
 Sphere::~Sphere() {}

@@ -31,20 +31,22 @@ Real fovy = 65;
 
 // scene geometry
 vector<Shape*> scene;
-// vector<VEC3> sphereCenters;
+// vector<VEC3> sphereCenters;=
 // vector<float> sphereRadii;
 // vector<VEC3> sphereColors;
 
-// lights
-vector<Light*> lights;
-Real phongExponent = 10.0;
-
 void destroyScene();
+void buildFloor();
+void buildPlatform();
 
+VEC3 RED = VEC3(1, 0, 0);
+VEC3 GREEN = VEC3(0, 1, 0);
+VEC3 BLUE = VEC3(0, 0, 1);
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 // bool raySphereIntersect(const VEC3& center, const float radius,
-//                         const VEC3& rayPos, const VEC3& rayDir, float& t) {
+//                         const VEC3& rayPos, const VEC3& rayDir, float& t)
+//                         {
 //     const VEC3 op = center - rayPos;
 //     const float eps = 1e-8;
 //     const float b = op.dot(rayDir);
@@ -94,7 +96,8 @@ void destroyScene();
 
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
-void renderImage(int& xRes, int& yRes, const string& filename, Camera cam) {
+void renderImage(int& xRes, int& yRes, const string& filename, Camera cam,
+                 vector<Light*> lights) {
     // TODO: you can keep this as is
     // allocate the final image
     // const int totalCells = xRes * yRes;
@@ -126,8 +129,8 @@ void renderImage(int& xRes, int& yRes, const string& filename, Camera cam) {
             // VEC3 color = rayColor(scene, )
 
             // get the color
-            VEC3 color = rayColor(scene, ray, lights, phongExponent, false,
-                                  false, false, false, false, 0, false, false);
+            VEC3 color = rayColor(scene, ray, lights, 10.0, true, true, false,
+                                  true, true, 0, true, true);
             // rayColor(eye, rayDir, color);
 
             // set, in final image
@@ -177,6 +180,10 @@ void buildScene() {
     // sphereCenters.clear();
     // sphereRadii.clear();
     // sphereColors.clear();
+
+    buildFloor();
+    buildPlatform();
+
     displayer.ComputeBonePositions(DisplaySkeleton::BONES_AND_LOCAL_FRAMES);
 
     // retrieve all the bones of the skeleton
@@ -247,6 +254,56 @@ void destroyScene() {
     scene.clear();
 }
 
+void buildFloor() {
+    // 0th index is the z-axis
+    // 2nd index is the x-axis
+    VEC3 points[4] = {// left, closer
+                      VEC3(-2, 0, 2),
+                      // right, further
+                      VEC3(5, 0, -2),
+                      // left, further
+                      VEC3(5, 0, 2),
+                      // right, closer
+                      VEC3(-2, 0, -1)};
+    Triangle* one =
+        new Triangle(points[0], points[1], points[2], GREEN, OPAQUE, 0.0);
+    Triangle* two =
+        new Triangle(points[0], points[3], points[1], GREEN, OPAQUE, 0.0);
+    scene.push_back(one);
+    scene.push_back(two);
+
+    Sphere* a = new Sphere(0.05, points[0], RED, OPAQUE, 1.0);
+    scene.push_back(a);
+    Sphere* b = new Sphere(0.05, points[1], BLUE, OPAQUE, 1.0);
+    scene.push_back(b);
+    Sphere* c = new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0);
+    scene.push_back(c);
+}
+
+void buildPlatform() {
+    VEC3 points[4] = {// left, closer
+                      VEC3(-2, 0.6, 2.5),
+                      // right, further
+                      VEC3(5, 0.6, 0.5),
+                      // left, further
+                      VEC3(5, 0.6, 2.5),
+                      // right, closer
+                      VEC3(-2, 0.6, 0.5)};
+    Triangle* one =
+        new Triangle(points[0], points[1], points[2], GREEN, OPAQUE, 0.0);
+    Triangle* two =
+        new Triangle(points[0], points[3], points[1], GREEN, OPAQUE, 0.0);
+    scene.push_back(one);
+    scene.push_back(two);
+
+    Sphere* a = new Sphere(0.05, points[0], RED, OPAQUE, 1.0);
+    scene.push_back(a);
+    Sphere* b = new Sphere(0.05, points[1], BLUE, OPAQUE, 1.0);
+    scene.push_back(b);
+    Sphere* c = new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0);
+    scene.push_back(c);
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
@@ -263,9 +320,14 @@ int main(int argc, char** argv) {
     displayer.LoadMotion(motion);
     skeleton->setPosture(*(displayer.GetSkeletonMotion(0)->GetPosture(0)));
 
-    // create a fixed camera for now
-    Camera cam = Camera(eye, lookingAt, up, windowWidth, windowHeight,
-                        distanceToNearPlane, fovy);
+    // create lights
+    Light one = Light(VEC3(10.0, 10.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    Light two = Light(VEC3(-10.0, 3.0, 7.5), VEC3(0.5, 0.0, 0.0));
+    Light three = Light(VEC3(0.0, 5.0, 5.0), VEC3(1.0, 1.0, 1.0));
+    vector<Light*> lights;
+    lights.push_back(&one);
+    lights.push_back(&two);
+    lights.push_back(&three);
 
     // Note we're going 8 frames at a time, otherwise the animation
     // is really slow.
@@ -274,9 +336,18 @@ int main(int argc, char** argv) {
         destroyScene();
         buildScene();
 
+        vector<VEC4>& translations = displayer.translations();
+        VEC4 pelvisTranslation = translations[1];
+        VEC3 cameraPos = VEC3(pelvisTranslation[0], pelvisTranslation[1],
+                              pelvisTranslation[2]);
+
+        // create a fixed camera for now
+        Camera cam = Camera(eye, cameraPos, up, windowWidth, windowHeight,
+                            distanceToNearPlane, fovy);
+
         char buffer[256];
         sprintf(buffer, "./frames/frame.%04i.ppm", x / 8);
-        renderImage(windowWidth, windowHeight, buffer, cam);
+        renderImage(windowWidth, windowHeight, buffer, cam, lights);
         cout << "Rendered " + to_string(x / 8) + " frames" << endl;
     }
 
