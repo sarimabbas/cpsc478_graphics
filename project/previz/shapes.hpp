@@ -19,6 +19,7 @@ extern Real REFRACT_AIR;
 
 enum Material { OPAQUE, MIRROR, DIELECTRIC };
 
+// forward declarations from tracer to prevent circular dependency
 class Ray;
 class IntersectResult;
 

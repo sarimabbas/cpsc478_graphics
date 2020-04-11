@@ -14,6 +14,7 @@
 
 using namespace std;
 
+// forward declarations from shapes to prevent circular dependency
 class Shape;
 
 // primitives
