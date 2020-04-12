@@ -4,6 +4,7 @@
         "*.pyde": "python",
         "*.html": "html",
         "vector": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "RayCast.C": "cpp"
     }
 }

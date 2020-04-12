@@ -41,24 +41,6 @@ IntersectResult Sphere::intersect(Ray ray) {
 
         return IntersectResult(closestT, true, normal, intersectionPoint, this);
     }
-
-    // const VEC3 op = center - ray.origin;
-    // const float eps = 1e-8;
-    // const float b = op.dot(ray.direction);
-    // float det = b * b - op.dot(op) + radius * radius;
-
-    // // determinant check
-    // if (det < 0) return IntersectResult();
-
-    // det = sqrt(det);
-    // Real t = b - det;
-    // if (t <= eps) {
-    //     t = b + det;
-    //     if (t <= eps) t = -1;
-    // }
-
-    // if (t < 0) return IntersectResult;
-    // return IntersectResult(t, true, );
 }
 
 Sphere::~Sphere() {}
@@ -108,3 +90,86 @@ IntersectResult Triangle::intersect(Ray ray) {
 }
 
 Triangle::~Triangle() {}
+
+// Cylinder
+Cylinder::Cylinder(VEC3 top, VEC3 bottom, Real radius, VEC4 translation,
+                   MATRIX4 rotation, VEC3 color, Material type,
+                   Real refractiveIndex)
+    : Shape(color, type, refractiveIndex),
+      top(top),
+      bottom(bottom),
+      radius(radius),
+      translation(translation),
+      rotation(rotation) {}
+
+IntersectResult Cylinder::intersect(Ray ray) {
+    // * construct the translation (i.e. the center of cylinder)
+    VEC3 cylinderCenter = (top + bottom) / 2.0;
+
+    // * construct rotation matrix
+    // get cylinder z-axis (going from bottom to top)
+    VEC3 cylinderAxisDirection = (top - bottom);
+    cylinderAxisDirection /= cylinderAxisDirection.norm();
+    // find the unit zAxis
+    VEC3 zAxis = VEC3(1.0, 0.0, 0.0);
+    zAxis /= zAxis.norm();
+    // find the angle between them
+    Real thetaBetween = acos(cylinderAxisDirection.dot(zAxis));
+    // find an axis of rotation
+    VEC3 axisOfRotation = cylinderAxisDirection.cross(zAxis);
+    MATRIX3 rotationMatrix;
+    rotationMatrix = AngleAxisd(thetaBetween, axisOfRotation);
+
+    // * translate ray origin
+    VEC3 trRayOrgn = ray.origin - cylinderCenter;
+
+    // * rotate the ray origin
+    trRayOrgn = rotationMatrix.transpose() * trRayOrgn;
+
+    // * rotate the ray direction
+    VEC3 trRayDir = rotationMatrix.transpose() * ray.direction;
+
+    // do the canonical intersection test
+    Real a = (trRayDir[0] * trRayDir[0]) + (trRayDir[2] * trRayDir[2]);
+    Real b =
+        (2.0 * trRayOrgn[0] * trRayDir[0]) + (2.0 * trRayOrgn[2] * trRayDir[2]);
+    Real c =
+        (trRayOrgn[0] * trRayOrgn[0]) + (trRayOrgn[2] * trRayOrgn[2]) - 1.0;
+
+    Real discriminant = (b * b) - (4.0 * a * c);
+
+    if (discriminant < 0.0) {
+        return IntersectResult();
+    }
+
+    // find values of t
+    Real t1 = (-b + sqrt(discriminant)) / (2.0 * a);
+    Real t2 = (-b - sqrt(discriminant)) / (2.0 * a);
+    Real closestT = t2;
+    if (t2 < 0.0) {
+        closestT = t1;
+    }
+
+    // calculate intersection point
+    VEC3 intersectionPoint = trRayOrgn + (trRayDir * closestT);
+
+    // check if intersection point between top and bottom, if not, the ray
+    // missed the cylinder
+    if (!(intersectionPoint[1] > bottom[1] && intersectionPoint[1] < top[1])) {
+        return IntersectResult();
+    }
+
+    // calculate normal
+    VEC3 axisPointAlignedWithIntersectionPoint =
+        VEC3(cylinderCenter[0], cylinderCenter[1], intersectionPoint[2]);
+    VEC3 normal = (intersectionPoint - axisPointAlignedWithIntersectionPoint);
+    normal /= normal.norm();
+
+    // convert back from local frame/object space to world space
+    intersectionPoint = (rotationMatrix * intersectionPoint) + cylinderCenter;
+    normal = rotationMatrix * normal;
+
+    return IntersectResult(closestT, true, normal, intersectionPoint, this);
+}
+
+Cylinder::~Cylinder() {}

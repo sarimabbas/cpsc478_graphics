@@ -67,4 +67,21 @@ class Triangle : public Shape {
 
     ~Triangle();
 };
-// class Cylinder;
+
+class Cylinder : public Shape {
+   public:
+    VEC3 top;
+    VEC3 bottom;
+    Real radius;
+
+    // model transform
+    VEC4 translation;
+    MATRIX4 rotation;
+
+    Cylinder(VEC3 top, VEC3 bottom, Real radius, VEC4 translation,
+             MATRIX4 rotation, VEC3 color, Material type, Real refractiveIndex);
+
+    IntersectResult intersect(Ray ray);
+
+    ~Cylinder();
+};

@@ -36,3 +36,5 @@ void readPPM(const string& filename, int& xRes, int& yRes, float*& values);
 void writePPM(const string& filename, int& xRes, int& yRes,
               const float* values);
 
+VEC3 truncate(const VEC4& v);
+VEC4 extend(const VEC3& v);

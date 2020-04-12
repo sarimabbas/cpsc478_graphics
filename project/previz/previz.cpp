@@ -212,6 +212,15 @@ void buildScene() {
         const float magnitude = direction.norm();
         direction *= 1.0 / magnitude;
 
+        // construct a cylinder
+        // MATRIX4 rotationCopy = rotations[x];
+        // VEC4 translationCopy = translations[x];
+        // Cylinder* cylinder =
+        //     new Cylinder(leftVertex.head<3>(), rightVertex.head<3>(), 0.05,
+        //                  translationCopy, rotationCopy, RED, OPAQUE, 0.0);
+
+        // scene.push_back(cylinder);
+
         // how many spheres?
         const float sphereRadius = 0.05;
         const int totalSpheres = magnitude / (2.0 * sphereRadius);
@@ -221,17 +230,10 @@ void buildScene() {
         Sphere* sphereLeft =
             new Sphere(0.05, leftVertex.head<3>(), VEC3(1, 0, 0), OPAQUE, 0.0);
         scene.push_back(sphereLeft);
-        // sphereCenters.push_back(leftVertex.head<3>());
-        // sphereRadii.push_back(0.05);
-        // sphereColors.push_back(VEC3(1, 0, 0));
 
         Sphere* sphereRight =
             new Sphere(0.05, rightVertex.head<3>(), VEC3(1, 0, 0), OPAQUE, 0.0);
         scene.push_back(sphereRight);
-
-        // sphereCenters.push_back(rightVertex.head<3>());
-        // sphereRadii.push_back(0.05);
-        // sphereColors.push_back(VEC3(1, 0, 0));
 
         for (int y = 0; y < totalSpheres; y++) {
             VEC3 center = ((float)y + 0.5) * rayIncrement * direction +
@@ -239,10 +241,6 @@ void buildScene() {
             Sphere* sphereCenter =
                 new Sphere(0.05, center, VEC3(1, 0, 0), OPAQUE, 0.0);
             scene.push_back(sphereCenter);
-
-            // sphereCenters.push_back(center);
-            // sphereRadii.push_back(0.05);
-            // sphereColors.push_back(VEC3(1, 0, 0));
         }
     }
 }
@@ -338,8 +336,7 @@ int main(int argc, char** argv) {
 
         vector<VEC4>& translations = displayer.translations();
         VEC4 pelvisTranslation = translations[1];
-        VEC3 cameraPos = VEC3(pelvisTranslation[0], pelvisTranslation[1],
-                              pelvisTranslation[2]);
+        VEC3 cameraPos = truncate(pelvisTranslation);
 
         // create a fixed camera for now
         Camera cam = Camera(eye, cameraPos, up, windowWidth, windowHeight,

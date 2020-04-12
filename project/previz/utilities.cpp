@@ -127,3 +127,7 @@ void readPPM(const string& filename, int& xRes, int& yRes, float*& values) {
     fclose(fp);
     cout << " Read in file " << filename.c_str() << endl;
 }
+
+VEC3 truncate(const VEC4& v) { return VEC3(v[0], v[1], v[2]); }
+
+VEC4 extend(const VEC3& v) { return VEC4(v[0], v[1], v[2], 1.0); }
