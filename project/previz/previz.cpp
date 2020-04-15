@@ -138,13 +138,15 @@ void buildScene() {
         direction *= 1.0 / magnitude;
 
         // construct a cylinder
-        // MATRIX4 rotationCopy = rotations[x];
-        // VEC4 translationCopy = translations[x];
-        // Cylinder* cylinder =
-        //     new Cylinder(leftVertex.head<3>(), rightVertex.head<3>(), 0.05,
-        //                  translationCopy, rotationCopy, RED, OPAQUE, 0.0);
+        MATRIX4 rotationCopy = rotations[x];
+        MATRIX4 scalingCopy = scalings[x];
+        VEC4 translationCopy = translations[x];
+        Real lengthCopy = lengths[x];
+        Cylinder* cylinder = new Cylinder(
+            leftVertex.head<3>(), rightVertex.head<3>(), 0.25, translationCopy,
+            rotationCopy, scalingCopy, lengthCopy, RED, OPAQUE, 0.0);
 
-        // scene.push_back(cylinder);
+        scene.push_back(cylinder);
 
         // how many spheres?
         const float sphereRadius = 0.05;
@@ -154,18 +156,18 @@ void buildScene() {
         // store the spheres
         Sphere* sphereLeft =
             new Sphere(0.05, leftVertex.head<3>(), VEC3(1, 0, 0), OPAQUE, 0.0);
-        scene.push_back(sphereLeft);
+        // scene.push_back(sphereLeft);
 
         Sphere* sphereRight =
             new Sphere(0.05, rightVertex.head<3>(), VEC3(1, 0, 0), OPAQUE, 0.0);
-        scene.push_back(sphereRight);
+        // scene.push_back(sphereRight);
 
         for (int y = 0; y < totalSpheres; y++) {
             VEC3 center = ((float)y + 0.5) * rayIncrement * direction +
                           leftVertex.head<3>();
             Sphere* sphereCenter =
                 new Sphere(0.05, center, VEC3(1, 0, 0), OPAQUE, 0.0);
-            scene.push_back(sphereCenter);
+            // scene.push_back(sphereCenter);
         }
     }
 }

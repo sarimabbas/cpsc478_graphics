@@ -77,9 +77,12 @@ class Cylinder : public Shape {
     // model transform
     VEC4 translation;
     MATRIX4 rotation;
+    MATRIX4 scaling;
+    Real length;
 
     Cylinder(VEC3 top, VEC3 bottom, Real radius, VEC4 translation,
-             MATRIX4 rotation, VEC3 color, Material type, Real refractiveIndex);
+             MATRIX4 rotation, MATRIX4 scaling, Real length, VEC3 color, Material type,
+             Real refractiveIndex);
 
     IntersectResult intersect(Ray ray);
 
