@@ -31,9 +31,6 @@ Real fovy = 65;
 
 // scene geometry
 vector<Shape*> scene;
-// vector<VEC3> sphereCenters;=
-// vector<float> sphereRadii;
-// vector<VEC3> sphereColors;
 
 void destroyScene();
 void buildFloor();
@@ -42,67 +39,10 @@ void buildPlatform();
 VEC3 RED = VEC3(1, 0, 0);
 VEC3 GREEN = VEC3(0, 1, 0);
 VEC3 BLUE = VEC3(0, 0, 1);
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-// bool raySphereIntersect(const VEC3& center, const float radius,
-//                         const VEC3& rayPos, const VEC3& rayDir, float& t)
-//                         {
-//     const VEC3 op = center - rayPos;
-//     const float eps = 1e-8;
-//     const float b = op.dot(rayDir);
-//     float det = b * b - op.dot(op) + radius * radius;
 
-//     // determinant check
-//     if (det < 0) return false;
-
-//     det = sqrt(det);
-//     t = b - det;
-//     if (t <= eps) {
-//         t = b + det;
-//         if (t <= eps) t = -1;
-//     }
-
-//     if (t < 0) return false;
-//     return true;
-// }
-
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-// void rayColor(const VEC3& rayPos, const VEC3& rayDir, VEC3& pixelColor) {
-//     pixelColor = VEC3(1, 1, 1);
-
-//     // look for intersections
-//     int hitID = -1;
-//     float tMinFound = FLT_MAX;
-//     for (int y = 0; y < sphereCenters.size(); y++) {
-//         float tMin = FLT_MAX;
-//         if (raySphereIntersect(sphereCenters[y], sphereRadii[y], rayPos,
-//         rayDir,
-//                                tMin)) {
-//             // is the closest so far?
-//             if (tMin < tMinFound) {
-//                 tMinFound = tMin;
-//                 hitID = y;
-//             }
-//         }
-//     }
-
-//     // No intersection, return white
-//     if (hitID == -1) return;
-
-//     // set to the sphere color
-//     pixelColor = sphereColors[hitID];
-// }
-
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
 void renderImage(int& xRes, int& yRes, const string& filename, Camera cam,
                  vector<Light*> lights) {
-    // TODO: you can keep this as is
-    // allocate the final image
-    // const int totalCells = xRes * yRes;
-    // float* ppmOut = new float[3 * totalCells];
-
+    //  allocate the image
     float* ppmOut = allocatePPM(cam.xRes, cam.yRes);
 
     // TODO: this seems to be ray generation stuff using camera
@@ -116,32 +56,17 @@ void renderImage(int& xRes, int& yRes, const string& filename, Camera cam,
     for (int x = 0; x < xRes; x++)
         for (int y = 0; y < yRes; y++) {
             // generate the ray, making x-axis go left to right
-            // const float ratioX = 1.0f - ((xRes - 1) - x) / float(xRes)
-            // * 2.0f; const float ratioY = 1.0f - y / float(yRes) * 2.0f; const
-            // VEC3 rayHitImage =
-            //     lookingAt + ratioX * halfX * cameraX + ratioY * halfY *
-            //     cameraY;
-            // const VEC3 rayDir = (rayHitImage - eye).normalized();
-
-            // generate ray
             Ray ray = rayGenerationAlt(x, y, cam);
-            // get the ray color
-            // VEC3 color = rayColor(scene, )
 
             // get the color
             VEC3 color = rayColor(scene, ray, lights, 10.0, true, true, false,
                                   true, true, 0, true, true);
-            // rayColor(eye, rayDir, color);
 
             // set, in final image
             int index = indexIntoPPM(x, y, cam.xRes, cam.yRes, false);
             ppmOut[index] = color[0] * 255.0;
             ppmOut[index + 1] = color[1] * 255.0;
             ppmOut[index + 2] = color[2] * 255.0;
-
-            // ppmOut[3 * (y * xRes + x)] = clamp(color[0]) * 255.0f;
-            // ppmOut[3 * (y * xRes + x) + 1] = clamp(color[1]) * 255.0f;
-            // ppmOut[3 * (y * xRes + x) + 2] = clamp(color[2]) * 255.0f;
         }
     writePPM(filename, xRes, yRes, ppmOut);
 
@@ -330,18 +255,19 @@ int main(int argc, char** argv) {
     // Note we're going 8 frames at a time, otherwise the animation
     // is really slow.
     for (int x = 0; x < 2400; x += 8) {
+        // update the skeleton motion
         setSkeletonsToSpecifiedFrame(x);
+        // empty the scene
         destroyScene();
+        // rebuild it
         buildScene();
-
+        // make the camera position follow the skeleton's pelvis
         vector<VEC4>& translations = displayer.translations();
         VEC4 pelvisTranslation = translations[1];
         VEC3 cameraPos = truncate(pelvisTranslation);
-
-        // create a fixed camera for now
         Camera cam = Camera(eye, cameraPos, up, windowWidth, windowHeight,
                             distanceToNearPlane, fovy);
-
+        // write the frame to image
         char buffer[256];
         sprintf(buffer, "./frames/frame.%04i.ppm", x / 8);
         renderImage(windowWidth, windowHeight, buffer, cam, lights);
