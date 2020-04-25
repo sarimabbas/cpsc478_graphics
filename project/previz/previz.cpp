@@ -35,6 +35,7 @@ vector<Shape*> scene;
 void destroyScene();
 void buildFloor();
 void buildPlatform();
+void buildEdifice();
 
 VEC3 RED = VEC3(1, 0, 0);
 VEC3 GREEN = VEC3(0, 1, 0);
@@ -60,7 +61,7 @@ void renderImage(int& xRes, int& yRes, const string& filename, Camera cam,
 
             // get the color
             VEC3 color = rayColor(scene, ray, lights, 10.0, true, true, false,
-                                  true, true, 0, true, true);
+                                  true, true, 0, true, true, true);
 
             // set, in final image
             int index = indexIntoPPM(x, y, cam.xRes, cam.yRes, false);
@@ -108,6 +109,7 @@ void buildScene() {
 
     buildFloor();
     buildPlatform();
+    buildEdifice();
 
     displayer.ComputeBonePositions(DisplaySkeleton::BONES_AND_LOCAL_FRAMES);
 
@@ -227,6 +229,12 @@ void buildPlatform() {
     scene.push_back(b);
     Sphere* c = new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0);
     scene.push_back(c);
+}
+
+void buildEdifice() {
+    VEC3 center = VEC3(0, 0, -0.7);
+    Sphere* a = new Sphere(0.5, center, VEC3(0.0, 0.0, 0.0), OPAQUE, 1.0);
+    scene.push_back(a);
 }
 
 //////////////////////////////////////////////////////////////////////////////////

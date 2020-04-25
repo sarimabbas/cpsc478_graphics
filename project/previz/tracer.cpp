@@ -1,6 +1,10 @@
 #include "tracer.hpp"
 
+#include "PerlinNoise.h"
+
 using namespace std;
+
+PerlinNoise pn;
 
 int MAX_RECURSION_DEPTH = 10;
 
@@ -135,7 +139,7 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
               bool useSpecular, bool useShadows, bool useMirror,
               int reflectionRecursionCounter, bool useRefraction,
-              bool useFresnel) {
+              bool useFresnel, bool softShadows) {
     // do an intersection with the scene
     IntersectResult intersection = intersectScene(scene, ray, 0.0);
 
@@ -153,8 +157,11 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
         for (int i = 0; i < lights.size(); i++) {
             // shoot shadow ray
             if (useShadows) {
-                // if not in shadow, add diffuse and specular, else skip
-                if (!isPointInShadow(scene, lights[i], intersection)) {
+                Ray shadowRay =
+                    createShadowRay(intersection, ray, lights[i], softShadows);
+                IntersectResult shadowIntersect =
+                    intersectScene(scene, shadowRay, 0.0);
+                if (!shadowIntersect.doesIntersect) {
                     color += lightingEquation(lights[i], intersection,
                                               phongExponent, ray, useSpecular);
                 }
@@ -173,10 +180,11 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
             reflectionRecursionCounter != MAX_RECURSION_DEPTH) {
             Ray reflectionRay = createReflectionRay(intersection, ray);
             // call the reflection recursively
-            VEC3 reflectionColor = rayColor(
-                scene, reflectionRay, lights, phongExponent, useLights,
-                useMultipleLights, useSpecular, useShadows, useMirror,
-                reflectionRecursionCounter + 1, useRefraction, useFresnel);
+            VEC3 reflectionColor =
+                rayColor(scene, reflectionRay, lights, phongExponent, useLights,
+                         useMultipleLights, useSpecular, useShadows, useMirror,
+                         reflectionRecursionCounter + 1, useRefraction,
+                         useFresnel, softShadows);
             color += reflectionColor;
         }
     }
@@ -193,11 +201,13 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
                 VEC3 reflectionColor = rayColor(
                     scene, reflectionRay, lights, phongExponent, useLights,
                     useMultipleLights, useSpecular, useShadows, useMirror,
-                    reflectionRecursionCounter + 1, useRefraction, useFresnel);
+                    reflectionRecursionCounter + 1, useRefraction, useFresnel,
+                    softShadows);
                 VEC3 refractionColor = rayColor(
                     scene, refractionRay, lights, phongExponent, useLights,
                     useMultipleLights, useSpecular, useShadows, useMirror,
-                    reflectionRecursionCounter + 1, useRefraction, useFresnel);
+                    reflectionRecursionCounter + 1, useRefraction, useFresnel,
+                    softShadows);
                 color += (kReflectance * reflectionColor) +
                          (kRefraction * refractionColor);
 
@@ -207,11 +217,20 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
                 VEC3 refractionColor = rayColor(
                     scene, refractionRay, lights, phongExponent, useLights,
                     useMultipleLights, useSpecular, useShadows, useMirror,
-                    reflectionRecursionCounter + 1, useRefraction, useFresnel);
+                    reflectionRecursionCounter + 1, useRefraction, useFresnel,
+                    softShadows);
                 color += refractionColor;
             }
         }
     }
+
+    // cout << pn.noise(0.45, 0.8, 0.55) << endl;
+
+    Real noise = pn.noise(intersection.intersectionPoint[0],
+                          intersection.intersectionPoint[1],
+                          intersection.intersectionPoint[2]) *
+                 1.2;
+    color += VEC3(noise, noise, noise);
 
     // prevent weird PPM problems by clamping color
     return clampVec3(color, 0.0, 1.0);
@@ -257,21 +276,43 @@ VEC3 lightingEquation(Light* light, IntersectResult intersection,
     return clampVec3(finalColor, 0.0, 1.0);
 }
 
-bool isPointInShadow(vector<Shape*> scene, Light* light,
-                     IntersectResult intersection) {
+Ray createShadowRay(IntersectResult intersection, Ray ray, Light* light,
+                    bool softShadows) {
     // adjust to avoid shadow acne problem
     VEC3 adjustedIntersectionPoint =
         intersection.intersectionPoint + (CUSTOM_EPSILON * intersection.normal);
     // generate shadow ray towards the light
     VEC3 shadowDirection = (light->position - adjustedIntersectionPoint);
+    // if softShadows, do Monte Carlo sampling and return a randomized ray
+    if (softShadows) {
+        // * calculate some vectors in the plane
+        // normal is flipped because ur hitting the light
+        VEC3 n = -intersection.normal;
+        VEC3 p = light->position;  // p is the point light source
+        // find two points
+        VEC3 p1 =
+            VEC3(0.0, 0.0, (((n[0] * p[0]) + (n[1] * p[1])) / n[2]) + p[2]);
+        VEC3 p2 =
+            VEC3((((n[1] * p[1]) + (n[2] * p[2])) / n[0]) + p[0], 0.0, 0.0);
+        // create two vecs
+        VEC3 u1 = p1 - p;
+        u1 /= u1.norm();
+        VEC3 u2 = p2 - p;
+        u2 /= u2.norm();
+        // generate combination
+        u1 = (rand() % 1) * u1 * 0.5;
+        u2 = (rand() % 1) * u2 * 0.5;
+        // translate p point
+        p = p + u1 + u2;
+        // make direction
+        shadowDirection = p - adjustedIntersectionPoint;
+        shadowDirection /= shadowDirection.norm();
+        Ray shadowRay(adjustedIntersectionPoint, shadowDirection);
+        return shadowRay;
+    }
     shadowDirection /= shadowDirection.norm();
     Ray shadowRay(adjustedIntersectionPoint, shadowDirection);
-    // see if it intersects anything
-    IntersectResult shadowIntersect = intersectScene(scene, shadowRay, 0.0);
-    if (shadowIntersect.doesIntersect) {
-        return true;
-    }
-    return false;
+    return shadowRay;
 }
 
 Ray createReflectionRay(IntersectResult intersection, Ray ray) {

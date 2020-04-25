@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "SETTINGS.h"
@@ -29,6 +30,7 @@ class Shape {
     VEC3 color;
     Material type;
     Real refractiveIndex;
+    string id;
 
     // base constructor
     Shape(VEC3 color, Material type, Real refractiveIndex);
@@ -81,8 +83,8 @@ class Cylinder : public Shape {
     Real length;
 
     Cylinder(VEC3 top, VEC3 bottom, Real radius, VEC4 translation,
-             MATRIX4 rotation, MATRIX4 scaling, Real length, VEC3 color, Material type,
-             Real refractiveIndex);
+             MATRIX4 rotation, MATRIX4 scaling, Real length, VEC3 color,
+             Material type, Real refractiveIndex);
 
     IntersectResult intersect(Ray ray);
 

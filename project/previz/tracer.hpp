@@ -73,13 +73,13 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
               Real phongExponent, bool useLights, bool useMultipleLights,
               bool useSpecular, bool useShadows, bool useMirror,
               int reflectionRecursionCounter, bool useRefraction,
-              bool useFresnel);
+              bool useFresnel, bool softShadows);
 
 // advanced tracer effects
 VEC3 lightingEquation(Light* light, IntersectResult intersection,
                       Real phongExponent, Ray ray, bool useSpecular);
-bool isPointInShadow(vector<Shape*> scene, Light* light,
-                     IntersectResult intersection);
+Ray createShadowRay(IntersectResult intersection, Ray ray, Light* light,
+                    bool softShadows);
 Ray createReflectionRay(IntersectResult intersection, Ray ray);
 Ray createRefractionRay(IntersectResult intersection, Ray ray);
 Real fresnel(IntersectResult intersection, Ray ray);
