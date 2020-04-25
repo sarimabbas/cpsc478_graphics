@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "SETTINGS.h"
+#include "textures.hpp"
 #include "tracer.hpp"
 #include "utilities.hpp"
 
@@ -31,9 +32,10 @@ class Shape {
     Material type;
     Real refractiveIndex;
     string id;
+    Texture* texture;
 
     // base constructor
-    Shape(VEC3 color, Material type, Real refractiveIndex);
+    Shape(VEC3 color, Material type, Real refractiveIndex, Texture* texture);
 
     // virtual destructor
     virtual ~Shape(){};
@@ -46,7 +48,7 @@ class Sphere : public Shape {
 
     // call the sphere constructor and the base constructor
     Sphere(Real radius, VEC3 center, VEC3 color, Material type,
-           Real refractiveIndex);
+           Real refractiveIndex, Texture* texture);
 
     IntersectResult intersect(Ray ray);
 
@@ -61,7 +63,7 @@ class Triangle : public Shape {
 
     // call the sphere constructor and the base constructor
     Triangle(VEC3 a, VEC3 b, VEC3 c, VEC3 color, Material type,
-             Real refractiveIndex);
+             Real refractiveIndex, Texture* texture);
 
     // Attribution
     // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
@@ -84,7 +86,7 @@ class Cylinder : public Shape {
 
     Cylinder(VEC3 top, VEC3 bottom, Real radius, VEC4 translation,
              MATRIX4 rotation, MATRIX4 scaling, Real length, VEC3 color,
-             Material type, Real refractiveIndex);
+             Material type, Real refractiveIndex, Texture* texture);
 
     IntersectResult intersect(Ray ray);
 

@@ -10,6 +10,7 @@
 #include "motion.h"
 #include "shapes.hpp"
 #include "skeleton.h"
+#include "textures.hpp"
 #include "tracer.hpp"
 #include "utilities.hpp"
 
@@ -146,7 +147,7 @@ void buildScene() {
         Real lengthCopy = lengths[x];
         Cylinder* cylinder = new Cylinder(
             leftVertex.head<3>(), rightVertex.head<3>(), 0.25, translationCopy,
-            rotationCopy, scalingCopy, lengthCopy, RED, OPAQUE, 0.0);
+            rotationCopy, scalingCopy, lengthCopy, RED, OPAQUE, 0.0, NULL);
 
         scene.push_back(cylinder);
 
@@ -156,19 +157,19 @@ void buildScene() {
         const float rayIncrement = magnitude / (float)totalSpheres;
 
         // store the spheres
-        Sphere* sphereLeft =
-            new Sphere(0.05, leftVertex.head<3>(), VEC3(1, 0, 0), OPAQUE, 0.0);
+        Sphere* sphereLeft = new Sphere(0.05, leftVertex.head<3>(),
+                                        VEC3(1, 0, 0), OPAQUE, 0.0, NULL);
         // scene.push_back(sphereLeft);
 
-        Sphere* sphereRight =
-            new Sphere(0.05, rightVertex.head<3>(), VEC3(1, 0, 0), OPAQUE, 0.0);
+        Sphere* sphereRight = new Sphere(0.05, rightVertex.head<3>(),
+                                         VEC3(1, 0, 0), OPAQUE, 0.0, NULL);
         // scene.push_back(sphereRight);
 
         for (int y = 0; y < totalSpheres; y++) {
             VEC3 center = ((float)y + 0.5) * rayIncrement * direction +
                           leftVertex.head<3>();
             Sphere* sphereCenter =
-                new Sphere(0.05, center, VEC3(1, 0, 0), OPAQUE, 0.0);
+                new Sphere(0.05, center, VEC3(1, 0, 0), OPAQUE, 0.0, NULL);
             // scene.push_back(sphereCenter);
         }
     }
@@ -193,17 +194,18 @@ void buildFloor() {
                       // right, closer
                       VEC3(-2, 0, -1)};
     Triangle* one =
-        new Triangle(points[0], points[1], points[2], GREEN, OPAQUE, 0.0);
+        new Triangle(points[0], points[1], points[2], GREEN, OPAQUE, 0.0, NULL);
     Triangle* two =
-        new Triangle(points[0], points[3], points[1], GREEN, OPAQUE, 0.0);
+        new Triangle(points[0], points[3], points[1], GREEN, OPAQUE, 0.0, NULL);
     scene.push_back(one);
     scene.push_back(two);
 
-    Sphere* a = new Sphere(0.05, points[0], RED, OPAQUE, 1.0);
+    Sphere* a = new Sphere(0.05, points[0], RED, OPAQUE, 1.0, NULL);
     scene.push_back(a);
-    Sphere* b = new Sphere(0.05, points[1], BLUE, OPAQUE, 1.0);
+    Sphere* b = new Sphere(0.05, points[1], BLUE, OPAQUE, 1.0, NULL);
     scene.push_back(b);
-    Sphere* c = new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0);
+    Sphere* c =
+        new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0, NULL);
     scene.push_back(c);
 }
 
@@ -217,23 +219,26 @@ void buildPlatform() {
                       // right, closer
                       VEC3(-2, 0.6, 0.5)};
     Triangle* one =
-        new Triangle(points[0], points[1], points[2], GREEN, OPAQUE, 0.0);
+        new Triangle(points[0], points[1], points[2], GREEN, OPAQUE, 0.0, NULL);
     Triangle* two =
-        new Triangle(points[0], points[3], points[1], GREEN, OPAQUE, 0.0);
+        new Triangle(points[0], points[3], points[1], GREEN, OPAQUE, 0.0, NULL);
     scene.push_back(one);
     scene.push_back(two);
 
-    Sphere* a = new Sphere(0.05, points[0], RED, OPAQUE, 1.0);
+    Sphere* a = new Sphere(0.05, points[0], RED, OPAQUE, 1.0, NULL);
     scene.push_back(a);
-    Sphere* b = new Sphere(0.05, points[1], BLUE, OPAQUE, 1.0);
+    Sphere* b = new Sphere(0.05, points[1], BLUE, OPAQUE, 1.0, NULL);
     scene.push_back(b);
-    Sphere* c = new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0);
+    Sphere* c =
+        new Sphere(0.05, points[2], VEC3(1, 0.4, 0.78), OPAQUE, 1.0, NULL);
     scene.push_back(c);
 }
 
 void buildEdifice() {
     VEC3 center = VEC3(0, 0, -0.7);
-    Sphere* a = new Sphere(0.5, center, VEC3(0.0, 0.0, 0.0), OPAQUE, 1.0);
+    Texture* perlinTexture = new TexturePerlin(10.0);
+    Sphere* a = new Sphere(0.5, center, VEC3(0.0, 0.0, 0.0), OPAQUE, 1.0,
+                           perlinTexture);
     scene.push_back(a);
 }
 

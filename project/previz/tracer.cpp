@@ -1,10 +1,6 @@
 #include "tracer.hpp"
 
-#include "PerlinNoise.h"
-
 using namespace std;
-
-PerlinNoise pn;
 
 int MAX_RECURSION_DEPTH = 10;
 
@@ -224,13 +220,11 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
         }
     }
 
-    // cout << pn.noise(0.45, 0.8, 0.55) << endl;
-
-    Real noise = pn.noise(intersection.intersectionPoint[0],
-                          intersection.intersectionPoint[1],
-                          intersection.intersectionPoint[2]) *
-                 1.2;
-    color += VEC3(noise, noise, noise);
+    // do texturing
+    if (intersection.intersectingShape->texture != NULL) {
+        color += intersection.intersectingShape->texture->getColor(
+            intersection.intersectionPoint);
+    }
 
     // prevent weird PPM problems by clamping color
     return clampVec3(color, 0.0, 1.0);

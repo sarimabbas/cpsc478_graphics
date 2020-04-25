@@ -7,14 +7,19 @@ Real REFRACT_AIR = 1.0;
 
 // SHAPE
 
-Shape::Shape(VEC3 color, Material type, Real refractiveIndex)
-    : color(color), type(type), refractiveIndex(refractiveIndex) {}
+Shape::Shape(VEC3 color, Material type, Real refractiveIndex, Texture* texture)
+    : color(color),
+      type(type),
+      refractiveIndex(refractiveIndex),
+      texture(texture) {}
 
 // SPHERE
 
 Sphere::Sphere(Real radius, VEC3 center, VEC3 color, Material type,
-               Real refractiveIndex)
-    : Shape(color, type, refractiveIndex), radius(radius), center(center) {}
+               Real refractiveIndex, Texture* texture)
+    : Shape(color, type, refractiveIndex, texture),
+      radius(radius),
+      center(center) {}
 
 IntersectResult Sphere::intersect(Ray ray) {
     Real A = ray.direction.dot(ray.direction);
@@ -49,8 +54,8 @@ Sphere::~Sphere() {}
 
 // call the sphere constructor and the base constructor
 Triangle::Triangle(VEC3 a, VEC3 b, VEC3 c, VEC3 color, Material type,
-                   Real refractiveIndex)
-    : Shape(color, type, refractiveIndex), a(a), b(b), c(c) {}
+                   Real refractiveIndex, Texture* texture)
+    : Shape(color, type, refractiveIndex, texture), a(a), b(b), c(c) {}
 
 // Attribution
 // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
@@ -94,8 +99,8 @@ Triangle::~Triangle() {}
 // Cylinder
 Cylinder::Cylinder(VEC3 top, VEC3 bottom, Real radius, VEC4 translation,
                    MATRIX4 rotation, MATRIX4 scaling, Real length, VEC3 color,
-                   Material type, Real refractiveIndex)
-    : Shape(color, type, refractiveIndex),
+                   Material type, Real refractiveIndex, Texture* texture)
+    : Shape(color, type, refractiveIndex, texture),
       top(top),
       bottom(bottom),
       radius(radius),
