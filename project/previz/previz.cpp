@@ -62,7 +62,7 @@ void renderImage(int& xRes, int& yRes, const string& filename, Camera cam,
 
             // get the color
             VEC3 color = rayColor(scene, ray, lights, 10.0, true, true, false,
-                                  true, true, 0, true, true, true);
+                                  true, true, 0, true, true, false);
 
             // set, in final image
             int index = indexIntoPPM(x, y, cam.xRes, cam.yRes, false);

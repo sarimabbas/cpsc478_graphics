@@ -4,6 +4,8 @@ using namespace std;
 
 int MAX_RECURSION_DEPTH = 10;
 
+Real frameCount = 0;
+
 Camera::Camera(VEC3 eye, VEC3 lookAt, VEC3 up, int xRes, int yRes,
                Real distanceToPlane, Real fovy)
     : eye(eye),
@@ -222,8 +224,12 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
 
     // do texturing
     if (intersection.intersectingShape->texture != NULL) {
-        color += intersection.intersectingShape->texture->getColor(
-            intersection.intersectionPoint);
+        // texture lookup (fun: use time to make it animated)
+        VEC3 lookup =
+            VEC3(intersection.intersectionPoint[0],
+                 intersection.intersectionPoint[1], frameCount * 0.000001);
+        color += intersection.intersectingShape->texture->getColor(lookup);
+        frameCount += 1.0;
     }
 
     // prevent weird PPM problems by clamping color
