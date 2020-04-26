@@ -225,9 +225,9 @@ VEC3 rayColor(vector<Shape*> scene, Ray ray, vector<Light*> lights,
     // do texturing
     if (intersection.intersectingShape->texture != NULL) {
         // texture lookup (fun: use time to make it animated)
-        VEC3 lookup =
-            VEC3(intersection.intersectionPoint[0],
-                 intersection.intersectionPoint[1], frameCount * 0.000001);
+        VEC3 lookup = VEC3(intersection.intersectionPoint[0],
+                           intersection.intersectionPoint[1],
+                           intersection.intersectionPoint[2]);
         color += intersection.intersectingShape->texture->getColor(lookup);
         frameCount += 1.0;
     }
